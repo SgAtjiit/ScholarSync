@@ -101,8 +101,13 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {user.name.split(' ')[0]}</h1>
             <p className="text-zinc-400">Here is your academic overview.</p>
           </div>
-          <Button onClick={handleScan} loading={loading}>
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} /> Sync
+          <Button
+            loading={loading}
+            onClick={handleScan}
+            disabled={loading}
+          >
+            {loading ? null : <RefreshCw className="mr-2" />} {/* Only show Sync icon if not loading */}
+            Sync
           </Button>
         </div>
 
