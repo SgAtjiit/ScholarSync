@@ -4,7 +4,6 @@ import User from '../models/User.js';
 import Course from '../models/Course.js';
 
 export const scanClassroomService = async (userId) => {
-  console.log(`Starting scan for User ID: ${userId}`);
 
   const user = await User.findById(userId);
   if (!user || !user.refreshToken) {
@@ -131,6 +130,5 @@ export const scanClassroomService = async (userId) => {
     } while (nextPageToken);
   }
 
-  console.log('Scan complete. Stats:', stats);
   return { success: true, stats };
 };

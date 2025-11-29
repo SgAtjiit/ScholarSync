@@ -162,8 +162,6 @@ export const generateSolution = async (assignmentId, userId, apiKey, mode = 'dra
         ? promptTemplate(assignment.title, assignment.description, extractedText, questionCount)
         : promptTemplate(assignment.title, assignment.description, extractedText);
 
-    console.log(`🤖 Generating ${mode.toUpperCase()} mode response for: ${assignment.title}`);
-
     try {
         const gemini_model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
         let modelConfig = { model: gemini_model }; // Updated to faster Flash 2.0 if available, or keep 1.5-flash
@@ -239,7 +237,6 @@ export const generateSolution = async (assignmentId, userId, apiKey, mode = 'dra
         assignment.status = 'processing';
         await assignment.save();
 
-        console.log(`✅ ${mode.toUpperCase()} mode solution generated successfully`);
         return solution;
 
     } catch (error) {
@@ -256,7 +253,6 @@ export const answerPDFQuestion = async (pdfBuffer, question, apiKey) => {
     try {
         if (!apiKey) throw new Error("API Key required for PDF Chat");
         if (!pdfBuffer) throw new Error("PDF/Doc Buffer required for Document Chat");
-        console.log(`🤖 Answering PDF question with Gemini...`);
 
         // Initialize with User Key
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -282,7 +278,6 @@ Provide a clear answer with relevant details from the document.`
         const response = await result.response;
         const answer = response.text();
 
-        console.log(`✅ Generated answer: ${answer.substring(0, 100)}...`);
         return answer;
 
     } catch (error) {
@@ -298,8 +293,6 @@ export const answerTextQuestion = async (textContext, question, apiKey) => {
     try {
         if (!apiKey) throw new Error("API Key required for Chat");
         if (!textContext) throw new Error("Context required for Chat");
-
-        console.log(`🤖 Answering Text question with Gemini...`);
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const gemini_model = process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash";
@@ -318,7 +311,6 @@ Provide a clear answer with relevant details from the document.`;
         const response = await result.response;
         const answer = response.text();
 
-        console.log(`✅ Generated answer: ${answer.substring(0, 100)}...`);
         return answer;
 
     } catch (error) {

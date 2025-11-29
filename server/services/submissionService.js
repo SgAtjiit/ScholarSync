@@ -9,7 +9,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const submitAssignment = async (solutionId, userId, editedContent = null) => {
-    console.log(`🚀 Starting submission for Solution ID: ${solutionId}`);
 
     // 1. Fetch Data
     const user = await User.findById(userId);
@@ -48,24 +47,20 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
 
     try {
         // 5. Generate PDF
-        console.log("📄 Generating PDF...");
         const pdfPath = await createPDF(contentToSubmit, `Solution_${assignment.title}`);
 
         // 6. Fetch actual course name from Classroom API
-        console.log("📚 Fetching course details...");
         let courseName = assignment.courseId; // Fallback to ID
         try {
             const courseDetails = await classroom.courses.get({
                 id: assignment.courseId
             });
             courseName = courseDetails.data.name || assignment.courseId;
-            console.log(`   ✅ Course name: ${courseName}`);
         } catch (courseError) {
             console.warn(`   ⚠️ Could not fetch course name, using ID: ${courseError.message}`);
         }
 
         // 7. Ensure organized folder structure exists
-        console.log("📁 Setting up Drive folders...");
 
         // 7a. Find or create main "ScholarSync Solutions" folder
         const mainFolderName = "ScholarSync Solutions";
@@ -79,7 +74,6 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
 
         if (mainFolderSearch.data.files && mainFolderSearch.data.files.length > 0) {
             mainFolderId = mainFolderSearch.data.files[0].id;
-            console.log(`   ✅ Found main folder: ${mainFolderName}`);
         } else {
             const mainFolder = await drive.files.create({
                 requestBody: {
@@ -89,7 +83,6 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
                 fields: 'id'
             });
             mainFolderId = mainFolder.data.id;
-            console.log(`   ✨ Created main folder: ${mainFolderName}`);
         }
 
         // 7b. Find or create course-specific subfolder (using actual course name)
@@ -103,7 +96,6 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
 
         if (courseFolderSearch.data.files && courseFolderSearch.data.files.length > 0) {
             courseFolderId = courseFolderSearch.data.files[0].id;
-            console.log(`   ✅ Found course folder: ${courseName}`);
         } else {
             const courseFolder = await drive.files.create({
                 requestBody: {
@@ -114,11 +106,9 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
                 fields: 'id'
             });
             courseFolderId = courseFolder.data.id;
-            console.log(`   ✨ Created course folder: ${courseName}`);
         }
 
         // 8. Upload PDF to organized location
-        console.log("☁️ Uploading to Drive...");
         const fileMetadata = {
             name: `Solution - ${assignment.title}.pdf`,
             mimeType: 'application/pdf',
@@ -136,11 +126,8 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
         });
 
         const driveFileId = driveFile.data.id;
-        console.log(`✅ Uploaded to Drive. File ID: ${driveFileId}`);
-        console.log(`   📂 Location: ${mainFolderName}/${courseName}/`);
 
         // 9. Share the file
-        console.log("🔗 Sharing Drive file...");
         try {
             await drive.permissions.create({
                 fileId: driveFileId,
@@ -149,7 +136,6 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
                     type: 'anyone'
                 }
             });
-            console.log("✅ File shared successfully");
         } catch (shareError) {
             console.warn("⚠️ Could not share file, but continuing...", shareError.message);
         }
@@ -171,11 +157,6 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
             driveFolderLink
         };
         await assignment.save();
-
-        console.log("✅ PDF ready for manual submission!");
-        console.log(`   📄 Drive File: ${driveFileLink}`);
-        console.log(`   📁 Course Folder: ${driveFolderLink}`);
-        console.log(`   📝 Classroom: ${classroomLink}`);
 
         return {
             success: true,

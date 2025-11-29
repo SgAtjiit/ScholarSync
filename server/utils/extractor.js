@@ -4,7 +4,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Helper to download file from Google Drive
 const downloadFile = async (fileId, accessToken) => {
-  console.log(`⬇️ Downloading file: ${fileId}...`);
   try {
     const response = await axios({
       method: 'GET',
@@ -12,7 +11,6 @@ const downloadFile = async (fileId, accessToken) => {
       headers: { Authorization: `Bearer ${accessToken}` },
       responseType: 'arraybuffer'
     });
-    console.log("✅ Download success.");
     return response.data;
   } catch (error) {
     if (error.response && error.response.status === 404) {
@@ -49,7 +47,6 @@ const extractIpynb = (buffer) => {
  * UPDATED: Now accepts apiKey to use User's Personal Key for PDF processing
  */
 export const extractTextFromMaterials = async (materials, accessToken, apiKey) => {
-  console.log(`\n🔧 EXTRACTOR: Received ${materials?.length || 0} materials`);
 
   if (!materials || materials.length === 0) {
     return { combinedText: "", methodsUsed: [] };
@@ -68,11 +65,8 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
 
     // Skip unsupported binaries
     if (title.endsWith('.zip') || title.endsWith('.exe') || title.endsWith('.png') || title.endsWith('.jpg')) {
-      console.log(`Skipping unsupported file: ${title}`);
       continue;
     }
-
-    console.log(`Processing extraction for: ${title} (${mimeType})`);
 
     const fileBuffer = await downloadFile(file.id, accessToken);
     if (!fileBuffer) continue;
@@ -88,8 +82,6 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
           combinedText += `\n\n[ERROR: Could not extract PDF. API Key missing.]\n`;
           continue;
         }
-
-        console.log(`🤖 Sending PDF to Gemini for comprehensive text & visual analysis...`);
 
         // Initialize Gemini with User's Key
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -126,7 +118,6 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
         if (geminiContent && geminiContent.length > 0) {
           combinedText += `\n\n--- SOURCE: ${title} (PDF - AI EXTRACTED) ---\n${geminiContent}`;
           methodsUsed.push('gemini-vision-only');
-          console.log(`✅ Gemini extracted ${geminiContent.length} chars (Text + Visual Analytics)`);
         } else {
           console.warn(`⚠️ Gemini returned empty response for PDF: ${title}`);
         }
@@ -142,7 +133,6 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
         if (cleanText.length > 0) {
           combinedText += `\n\n--- SOURCE: ${title} (DOCX) ---\n${cleanText}`;
           methodsUsed.push('mammoth');
-          console.log(`✅ Extracted ${cleanText.length} chars from DOCX.`);
         }
       }
 
@@ -154,7 +144,6 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
         if (ipynbText.length > 0) {
           combinedText += `\n\n--- SOURCE: ${title} (NOTEBOOK) ---\n${ipynbText}`;
           methodsUsed.push('ipynb-parser');
-          console.log(`✅ Extracted ${ipynbText.length} chars from IPYNB.`);
         }
       }
 
@@ -168,7 +157,7 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
       }
 
       else {
-        console.log(`ℹ️ File type not supported for text extraction: ${mimeType}`);
+        // File type not supported
       }
 
     } catch (err) {

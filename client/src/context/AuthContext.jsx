@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import api from '../api/axios';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -35,7 +36,7 @@ export const AuthProvider = ({ children }) => {
         // navigate('/')
       } catch (err) {
         console.error("Login failed", err);
-        alert("Login failed. Please try again.");
+        toast.error("Login failed. Please try again.");
       } finally {
         setLoading(false);
       }
