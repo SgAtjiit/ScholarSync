@@ -6,10 +6,10 @@ import { AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast"
 const Navbar = () => {
   const { user, logout } = useAuth();
- const handleLogout = ()=>{
-  toast.success("Logged out successfully!!")
-  logout()
- }
+  const handleLogout = () => {
+    toast.success("Logged out successfully!!")
+    logout()
+  }
   return (
     <nav className="h-16 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-50 px-4 md:px-8 flex items-center justify-between">
       <Link to="/dashboard" className="flex items-center gap-3 group">
@@ -39,21 +39,23 @@ const Navbar = () => {
               </p>
             </div>
             <a href="/profile">
-            <img
-              src={user.avatar}
-              alt="Avatar"
-              className="w-9 h-9 rounded-full border border-white/10 ring-2 ring-transparent hover:ring-indigo-500/50 transition-all cursor-pointer"
-            />
+              <img
+                src={user.avatar}
+                alt="Avatar"
+                className="w-9 h-9 rounded-full border border-white/10 ring-2 ring-transparent hover:ring-indigo-500/50 transition-all cursor-pointer"
+              />
             </a>
-            
+
             {!localStorage.getItem("gemini_api_key") && (
-              <span
-                className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded"
-                title="Gemini API Key not set!"
-              >
-                <AlertTriangle size={12} className="inline mr-1" /> API Key
-                Missing
-              </span>
+              <a href="/profile">
+                <span
+                  className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded"
+                  title="Gemini API Key not set!"
+                >
+                  <AlertTriangle size={12} className="inline mr-1" /> API Key
+                  Missing
+                </span>
+              </a>
             )}
             <button
               onClick={handleLogout}
