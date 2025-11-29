@@ -1,0 +1,495 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import Assignment from '../models/Assignment.js';
+import Solution from '../models/Solution.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+/**
+ * Prompt Templates for Different Modes
+ */
+const PROMPT_TEMPLATES = {
+    explain: (title, description, content) => `
+You are an expert academic tutor helping a student understand their assignment without giving them the direct answer.
+
+ASSIGNMENT TITLE: ${title}
+
+DESCRIPTION: ${description || "No description provided"}
+
+ASSIGNMENT CONTENT:
+${content}
+
+CRITICAL FORMATTING REQUIREMENTS:
+You MUST respond with clean, semantic HTML that is beautifully formatted.
+
+INSTRUCTIONS:
+1. Break down the core concepts and topics covered in this assignment
+2. Explain key theories, formulas, or principles needed to solve it
+3. Use analogies and examples to clarify difficult concepts
+4. DO NOT provide the direct solution or answers
+5. Guide the student's thinking process with leading questions
+6. Use proper HTML tags:
+   - <h1> for main title: "${title} - Explanation"
+   - <h2> for major concept sections
+   - <h3> for sub-concepts
+   - <p> for explanatory paragraphs
+   - <ul> and <li> for key points
+   - <strong> for important terms
+   - <em> for emphasis
+7. Be encouraging and supportive in your tone
+8. Make it visually clear and well-organized
+
+OUTPUT ONLY THE HTML CONTENT - no markdown, no code blocks, just pure HTML.
+`,
+
+    quiz: (title, description, content, questionCount = 5) => `
+You are an educational assessment expert. Generate exactly ${questionCount} multiple-choice questions to test understanding of this assignment.
+
+ASSIGNMENT TITLE: ${title}
+
+DESCRIPTION: ${description || "No description provided"}
+
+ASSIGNMENT CONTENT:
+${content}
+
+CRITICAL INSTRUCTIONS:
+1. Generate EXACTLY ${questionCount} multiple-choice questions based on the content
+2. Each question must have exactly 4 options
+3. Questions should test understanding, not just recall
+4. Vary difficulty levels appropriately
+5. YOU MUST respond with VALID JSON ONLY, no markdown formatting, no code blocks
+
+REQUIRED JSON FORMAT:
+{
+  "questions": [
+    {
+      "question": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0
+    }
+  ]
+}
+
+The correctAnswer is the 0-based index of the correct option (0, 1, 2, or 3).
+`,
+
+    flashcards: (title, description, content) => `
+You are a study aid designer. Extract key terms, concepts, and definitions from this assignment to create flashcards.
+
+ASSIGNMENT TITLE: ${title}
+
+DESCRIPTION: ${description || "No description provided"}
+
+ASSIGNMENT CONTENT:
+${content}
+
+CRITICAL INSTRUCTIONS:
+1. Extract 8-12 key terms, concepts, formulas, or definitions
+2. Each flashcard has a FRONT (term/question) and BACK (definition/answer)
+3. Keep fronts concise (1-10 words), backs can be 1-3 sentences
+4. Cover the most important concepts from the content
+5. YOU MUST respond with VALID JSON ONLY, no markdown formatting, no code blocks
+
+REQUIRED JSON FORMAT:
+{
+  "flashcards": [
+    {
+      "front": "Term or concept",
+      "back": "Definition or explanation"
+    }
+  ]
+}
+`,
+
+    draft: (title, description, content) => `
+You are an expert academic tutor generating a polished, ready-to-submit assignment solution.
+
+ASSIGNMENT TITLE: ${title}
+
+CONTEXT/DESCRIPTION: 
+${description || "No specific description provided."}
+
+ATTACHED CONTENT (Extracted from files):
+${content}
+
+CRITICAL FORMATTING REQUIREMENTS:
+You MUST respond with clean, semantic HTML that is beautifully formatted and fully editable.
+
+INSTRUCTIONS:
+1. Answer all questions comprehensively with detailed explanations
+2. Show step-by-step work for math/science problems
+3. Use proper HTML tags for structure:
+   - <h1> for main title: "${title}"
+   - <h2> for section headings (e.g., "Question 1", "Solution", "Analysis")
+   - <h3> for sub-sections
+   - <p> for paragraphs (keep them concise and well-spaced)
+   - <ul> and <li> for bullet points
+   - <ol> and <li> for numbered lists
+   - <strong> for important terms
+   - <em> for emphasis
+   - Use <br> sparingly for line breaks when needed
+4. Start with: <h1>${title}</h1>
+5. Organize content with clear headings for each question/section
+6. Be professional, thorough, and academic
+7. Make it visually appealing with good spacing and hierarchy
+
+OUTPUT ONLY THE HTML CONTENT - no markdown, no code blocks, just pure HTML.
+`
+};
+
+/**
+ * Main AI Service Function with Multi-Mode Support
+ * @param {String} assignmentId - MongoDB Assignment ID
+ * @param {String} userId - MongoDB User ID
+ * @param {String} mode - AI interaction mode: 'explain', 'quiz', 'flashcards', 'draft'
+ * @param {Number} questionCount - Number of questions for quiz mode (default: 5)
+ */
+export const generateSolution = async (assignmentId, userId, mode = 'draft', questionCount = 5) => {
+    // Validate mode
+    const validModes = ['explain', 'quiz', 'flashcards', 'draft'];
+    if (!validModes.includes(mode)) {
+        throw new Error(`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`);
+    }
+
+    // 1. Fetch the Assignment Data
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) throw new Error('Assignment not found');
+
+    // 2. Check if content exists (lowered threshold for description-only assignments)
+    const extractedText = assignment.extractedContent?.fullText || "";
+    if (extractedText.length < 20) {
+        throw new Error("Not enough content extracted to generate a solution. Please check the assignment files or description.");
+    }
+
+    // 3. Get the appropriate prompt template
+    const promptTemplate = PROMPT_TEMPLATES[mode];
+    const prompt = mode === 'quiz'
+        ? promptTemplate(assignment.title, assignment.description, extractedText, questionCount)
+        : promptTemplate(assignment.title, assignment.description, extractedText);
+
+    console.log(`🤖 Generating ${mode.toUpperCase()} mode response for: ${assignment.title}`);
+
+    try {
+        // 4. Configure model based on mode
+        let modelConfig = { model: "gemini-2.5-flash-lite" };
+
+        // For JSON modes, use strict JSON schema enforcement
+        if (mode === 'quiz' || mode === 'flashcards') {
+            modelConfig.generationConfig = {
+                responseMimeType: "application/json"
+            };
+        }
+
+        const model = genAI.getGenerativeModel(modelConfig);
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        let text = response.text();
+
+        // 5. Validate and parse JSON for structured modes
+        if (mode === 'quiz' || mode === 'flashcards') {
+            try {
+                const parsed = JSON.parse(text);
+
+                // Validate structure
+                if (mode === 'quiz') {
+                    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+                        throw new Error('Invalid quiz JSON structure');
+                    }
+                    // Validate each question
+                    parsed.questions.forEach((q, idx) => {
+                        if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length !== 4) {
+                            throw new Error(`Invalid question structure at index ${idx}`);
+                        }
+                        if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 3) {
+                            throw new Error(`Invalid correctAnswer at index ${idx}`);
+                        }
+                    });
+                }
+
+                if (mode === 'flashcards') {
+                    if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
+                        throw new Error('Invalid flashcards JSON structure');
+                    }
+                    // Validate each flashcard
+                    parsed.flashcards.forEach((card, idx) => {
+                        if (!card.front || !card.back) {
+                            throw new Error(`Invalid flashcard structure at index ${idx}`);
+                        }
+                    });
+                }
+
+                // Re-stringify to ensure clean JSON storage
+                text = JSON.stringify(parsed, null, 2);
+            } catch (parseError) {
+                console.error("JSON Parsing Error:", parseError);
+                throw new Error(`Failed to parse ${mode} response as JSON: ${parseError.message}`);
+            }
+        }
+
+        // 6. Save to Database
+        let solution = await Solution.findOne({ assignmentId: assignment._id });
+
+        if (solution) {
+            solution.mode = mode;
+            solution.content = text;
+            solution.promptUsed = prompt;
+            solution.editedContent = null; // Reset edited content on regeneration
+            solution.version += 1;
+            await solution.save();
+        } else {
+            solution = await Solution.create({
+                assignmentId: assignment._id,
+                userId: userId,
+                mode: mode,
+                promptUsed: prompt,
+                content: text
+            });
+        }
+${ content }
+
+CRITICAL INSTRUCTIONS:
+        1. Generate EXACTLY ${ questionCount } multiple - choice questions based on the content
+        2. Each question must have exactly 4 options
+        3. Questions should test understanding, not just recall
+        4. Vary difficulty levels appropriately
+        5. YOU MUST respond with VALID JSON ONLY, no markdown formatting, no code blocks
+
+REQUIRED JSON FORMAT:
+        {
+            "questions": [
+                {
+                    "question": "Question text here?",
+                    "options": ["Option A", "Option B", "Option C", "Option D"],
+                    "correctAnswer": 0
+                }
+            ]
+        }
+
+The correctAnswer is the 0 - based index of the correct option(0, 1, 2, or 3).
+`,
+
+    flashcards: (title, description, content) => `
+You are a study aid designer.Extract key terms, concepts, and definitions from this assignment to create flashcards.
+
+ASSIGNMENT TITLE: ${ title }
+
+        DESCRIPTION: ${ description || "No description provided" }
+
+ASSIGNMENT CONTENT:
+${ content }
+
+CRITICAL INSTRUCTIONS:
+        1. Extract 8 - 12 key terms, concepts, formulas, or definitions
+        2. Each flashcard has a FRONT(term / question) and BACK(definition / answer)
+        3. Keep fronts concise(1 - 10 words), backs can be 1 - 3 sentences
+        4. Cover the most important concepts from the content
+        5. YOU MUST respond with VALID JSON ONLY, no markdown formatting, no code blocks
+
+REQUIRED JSON FORMAT:
+        {
+            "flashcards": [
+                {
+                    "front": "Term or concept",
+                    "back": "Definition or explanation"
+                }
+            ]
+        }
+        `,
+
+    draft: (title, description, content) => `
+You are an expert academic tutor generating a polished, ready - to - submit assignment solution.
+
+ASSIGNMENT TITLE: ${ title }
+
+        CONTEXT / DESCRIPTION: 
+${ description || "No specific description provided." }
+
+ATTACHED CONTENT(Extracted from files):
+${ content }
+
+CRITICAL FORMATTING REQUIREMENTS:
+You MUST respond with clean, semantic HTML that is beautifully formatted and fully editable.
+
+            INSTRUCTIONS:
+        1. Answer all questions comprehensively with detailed explanations
+        2. Show step - by - step work for math / science problems
+3. Use proper HTML tags for structure:
+            - <h1> for main title: "${title}"
+                - <h2> for section headings (e.g., "Question 1", "Solution", "Analysis")
+                    - <h3> for sub-sections
+                        - <p> for paragraphs (keep them concise and well-spaced)
+                            - <ul> and <li> for bullet points
+                                - <ol> and <li> for numbered lists
+                                    - <strong> for important terms
+                                        - <em> for emphasis
+                                            - Use <br> sparingly for line breaks when needed
+                                                4. Start with: <h1>${title}</h1>
+                                                5. Organize content with clear headings for each question/section
+                                                6. Be professional, thorough, and academic
+                                                7. Make it visually appealing with good spacing and hierarchy
+
+                                                OUTPUT ONLY THE HTML CONTENT - no markdown, no code blocks, just pure HTML.
+                                                `
+};
+
+/**
+ * Main AI Service Function with Multi-Mode Support
+ * @param {String} assignmentId - MongoDB Assignment ID
+                                                * @param {String} userId - MongoDB User ID
+                                                * @param {String} mode - AI interaction mode: 'explain', 'quiz', 'flashcards', 'draft'
+                                                * @param {Number} questionCount - Number of questions for quiz mode (default: 5)
+                                                */
+export const generateSolution = async (assignmentId, userId, mode = 'draft', questionCount = 5) => {
+    // Validate mode
+    const validModes = ['explain', 'quiz', 'flashcards', 'draft'];
+                                                if (!validModes.includes(mode)) {
+        throw new Error(`Invalid mode: ${mode}. Must be one of: ${validModes.join(', ')}`);
+    }
+
+                                                // 1. Fetch the Assignment Data
+                                                const assignment = await Assignment.findById(assignmentId);
+                                                if (!assignment) throw new Error('Assignment not found');
+
+                                                // 2. Check if content exists (lowered threshold for description-only assignments)
+                                                const extractedText = assignment.extractedContent?.fullText || "";
+                                                if (extractedText.length < 20) {
+        throw new Error("Not enough content extracted to generate a solution. Please check the assignment files or description.");
+    }
+
+                                                // 3. Get the appropriate prompt template
+                                                const promptTemplate = PROMPT_TEMPLATES[mode];
+                                                const prompt = mode === 'quiz'
+                                                ? promptTemplate(assignment.title, assignment.description, extractedText, questionCount)
+                                                : promptTemplate(assignment.title, assignment.description, extractedText);
+
+                                                console.log(`🤖 Generating ${mode.toUpperCase()} mode response for: ${assignment.title}`);
+
+                                                try {
+                                                    // 4. Configure model based on mode
+                                                    let modelConfig = {model: "gemini-2.5-flash-lite" };
+
+                                                // For JSON modes, use strict JSON schema enforcement
+                                                if (mode === 'quiz' || mode === 'flashcards') {
+                                                    modelConfig.generationConfig = {
+                                                        responseMimeType: "application/json"
+                                                    };
+        }
+
+                                                const model = genAI.getGenerativeModel(modelConfig);
+                                                const result = await model.generateContent(prompt);
+                                                const response = await result.response;
+                                                let text = response.text();
+
+                                                // 5. Validate and parse JSON for structured modes
+                                                if (mode === 'quiz' || mode === 'flashcards') {
+            try {
+                const parsed = JSON.parse(text);
+
+                                                // Validate structure
+                                                if (mode === 'quiz') {
+                    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+                        throw new Error('Invalid quiz JSON structure');
+                    }
+                    // Validate each question
+                    parsed.questions.forEach((q, idx) => {
+                        if (!q.question || !q.options || !Array.isArray(q.options) || q.options.length !== 4) {
+                            throw new Error(`Invalid question structure at index ${idx}`);
+                        }
+                                                if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 3) {
+                            throw new Error(`Invalid correctAnswer at index ${idx}`);
+                        }
+                    });
+                }
+
+                                                if (mode === 'flashcards') {
+                    if (!parsed.flashcards || !Array.isArray(parsed.flashcards)) {
+                        throw new Error('Invalid flashcards JSON structure');
+                    }
+                    // Validate each flashcard
+                    parsed.flashcards.forEach((card, idx) => {
+                        if (!card.front || !card.back) {
+                            throw new Error(`Invalid flashcard structure at index ${idx}`);
+                        }
+                    });
+                }
+
+                                                // Re-stringify to ensure clean JSON storage
+                                                text = JSON.stringify(parsed, null, 2);
+            } catch (parseError) {
+                                                    console.error("JSON Parsing Error:", parseError);
+                                                throw new Error(`Failed to parse ${mode} response as JSON: ${parseError.message}`);
+            }
+        }
+
+                                                // 6. Save to Database
+                                                let solution = await Solution.findOne({assignmentId: assignment._id });
+
+                                                if (solution) {
+                                                    solution.mode = mode;
+                                                solution.content = text;
+                                                solution.promptUsed = prompt;
+                                                solution.editedContent = null; // Reset edited content on regeneration
+                                                solution.version += 1;
+                                                await solution.save();
+        } else {
+                                                    solution = await Solution.create({
+                                                        assignmentId: assignment._id,
+                                                        userId: userId,
+                                                        mode: mode,
+                                                        promptUsed: prompt,
+                                                        content: text
+                                                    });
+        }
+
+                                                // Update Assignment status
+                                                assignment.status = 'processing';
+                                                await assignment.save();
+
+                                                console.log(`✅ ${mode.toUpperCase()} mode solution generated successfully`);
+                                                return solution;
+
+    } catch (error) {
+                                                    console.error("Gemini API Error:", error);
+                                                throw new Error(`Failed to generate ${mode} solution from AI: ${error.message}`);
+    }
+};
+
+/**
+ * Answer questions about a PDF using Gemini Multimodal
+ */
+export const answerPDFQuestion = async (pdfBuffer, question) => {
+  try {
+                                                    console.log(`🤖 Answering PDF question with Gemini...`);
+
+                                                const model = genAI.getGenerativeModel({model: "gemini-1.5-flash" });
+
+                                                const result = await model.generateContent([
+                                                {
+                                                    inlineData: {
+                                                    mimeType: "application/pdf",
+                                                data: pdfBuffer.toString('base64')
+        }
+      },
+                                                {
+                                                    text: `You are a helpful AI assistant analyzing a PDF document. Answer the following question based on the PDF content. Be concise, accurate, and helpful.
+
+                                                Question: ${question}
+
+                                                Provide a clear answer with relevant details from the document.`
+      }
+                                                ]);
+
+                                                const response = await result.response;
+                                                const answer = response.text();
+
+                                                console.log(`✅ Generated answer: ${answer.substring(0, 100)}...`);
+                                                return answer;
+    
+  } catch (error) {
+                                                    console.error('PDF Question Error:', error);
+                                                throw new Error('Failed to answer question: ' + error.message);
+  }
+};

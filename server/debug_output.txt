@@ -1,0 +1,26 @@
+﻿[dotenv@17.2.3] injecting env (7) from .env -- tip: ≡ƒùé∩╕Å backup and recover secrets: https://dotenvx.com/ops
+Γ£à Connected to MongoDB
+≡ƒôî Using user: 23103033@mail.jiit.ac.in
+≡ƒôï Found 5 assignments
+
+≡ƒöì Testing extraction for: "Assignment 1 "
+≡ƒôü Materials count: 1
+
+≡ƒôª Materials structure:
+
+--- Material 1 ---
+Full object: {
+  "_id": "692a8df921e1c867bde307f1"
+}
+
+ΓÜá∩╕Å No text has been extracted yet
+
+≡ƒöä Attempting fresh extraction...
+Γ£à Got access token
+Total combined text length: 0
+
+≡ƒôè Extraction Result:
+- Combined text length: 0 chars
+- Methods used: none
+
+Γ¥î No text was extracted!
