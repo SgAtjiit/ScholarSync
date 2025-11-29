@@ -1,12 +1,13 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { convert } from 'html-to-text';
 
 export const createPDF = (text, fileName) => {
     return new Promise((resolve, reject) => {
-        // Create a temporary file path
-        const filePath = path.join(process.cwd(), `${fileName}.pdf`);
+        // Create a temporary file path in /tmp (writable on Vercel)
+        const filePath = path.join(os.tmpdir(), `${fileName}.pdf`);
 
         const doc = new PDFDocument({ margin: 50 });
         const stream = fs.createWriteStream(filePath);
