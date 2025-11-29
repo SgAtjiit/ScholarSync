@@ -71,7 +71,7 @@ const Dashboard = () => {
     setLoading(true);
 
     // ✨ ADDED: Loading toast
-    const toastId = toast.loading("Syncing with Google Classroom...");
+    // const toastId = toast.loading("Syncing with Google Classroom...");
 
     try {
       const results = await api.post('/classroom/scan', { userId: user._id });
