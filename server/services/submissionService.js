@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import fs from 'fs';
+import { PassThrough } from 'stream'; // Native Node module for streams
 import User from '../models/User.js';
 import Assignment from '../models/Assignment.js';
 import Solution from '../models/Solution.js';
@@ -13,9 +13,12 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
     // 1. Fetch Data
     const user = await User.findById(userId);
     const solution = await Solution.findById(solutionId);
+    
+    if (!solution) throw new Error("Solution not found");
+    
     const assignment = await Assignment.findById(solution.assignmentId);
 
-    if (!user || !solution || !assignment) throw new Error("Data missing");
+    if (!user || !assignment) throw new Error("User or Assignment missing");
 
     // 2. Validate that only draft mode can be submitted
     const solutionMode = solution.mode || 'draft';
@@ -43,26 +46,28 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
     oauth2Client.setCredentials({ refresh_token: user.refreshToken });
 
     const drive = google.drive({ version: 'v3', auth: oauth2Client });
-    const classroom = google.classroom({ version: 'v1', auth: oauth2Client });
-
+    // Note: Classroom API strictly needs courseId for certain operations
+    
     try {
-        // 5. Generate PDF
-        const pdfPath = await createPDF(contentToSubmit, `Solution_${assignment.title}`);
+        // 5. Generate PDF Buffer (In-Memory, No File System)
+        console.log("Generating PDF in memory...");
+        const pdfBuffer = await createPDF(contentToSubmit);
 
-        // 6. Fetch actual course name from Classroom API
-        let courseName = assignment.courseId; // Fallback to ID
-        try {
-            const courseDetails = await classroom.courses.get({
-                id: assignment.courseId
-            });
-            courseName = courseDetails.data.name || assignment.courseId;
-        } catch (courseError) {
-            console.warn(`   ⚠️ Could not fetch course name, using ID: ${courseError.message}`);
+        // 6. Convert Buffer to Stream for Google Drive Upload
+        const bufferStream = new PassThrough();
+        bufferStream.end(pdfBuffer);
+
+        // 7. Fetch actual course name
+        let courseName = "Unknown Course";
+        // Only fetch if we have a valid courseId format (not purely local)
+        if (assignment.courseId) {
+             // Sometimes assignment.courseId is stored, strictly checking ensures we don't break
+             courseName = assignment.courseName || assignment.courseId; 
         }
 
-        // 7. Ensure organized folder structure exists
-
-        // 7a. Find or create main "ScholarSync Solutions" folder
+        // 8. Ensure organized folder structure exists
+        
+        // 8a. Find or create main "ScholarSync Solutions" folder
         const mainFolderName = "ScholarSync Solutions";
         let mainFolderId;
 
@@ -85,11 +90,13 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
             mainFolderId = mainFolder.data.id;
         }
 
-        // 7b. Find or create course-specific subfolder (using actual course name)
+        // 8b. Find or create course-specific subfolder
+        // Sanitize course name to avoid invalid characters in folder name if necessary
+        const safeCourseName = courseName.replace(/[/\\?%*:|"<>]/g, '-'); 
         let courseFolderId;
 
         const courseFolderSearch = await drive.files.list({
-            q: `name='${courseName}' and mimeType='application/vnd.google-apps.folder' and '${mainFolderId}' in parents and trashed=false`,
+            q: `name='${safeCourseName}' and mimeType='application/vnd.google-apps.folder' and '${mainFolderId}' in parents and trashed=false`,
             fields: 'files(id, name)',
             spaces: 'drive'
         });
@@ -99,7 +106,7 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
         } else {
             const courseFolder = await drive.files.create({
                 requestBody: {
-                    name: courseName,
+                    name: safeCourseName,
                     mimeType: 'application/vnd.google-apps.folder',
                     parents: [mainFolderId]
                 },
@@ -108,26 +115,27 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
             courseFolderId = courseFolder.data.id;
         }
 
-        // 8. Upload PDF to organized location
+        // 9. Upload PDF using the Stream
         const fileMetadata = {
             name: `Solution - ${assignment.title}.pdf`,
             mimeType: 'application/pdf',
-            parents: [courseFolderId] // Upload into course-specific folder
+            parents: [courseFolderId]
         };
+
         const media = {
             mimeType: 'application/pdf',
-            body: fs.createReadStream(pdfPath),
+            body: bufferStream, // Stream directly from memory
         };
 
         const driveFile = await drive.files.create({
-            resource: fileMetadata,
+            requestBody: fileMetadata,
             media: media,
             fields: 'id',
         });
 
         const driveFileId = driveFile.data.id;
 
-        // 9. Share the file
+        // 10. Share the file (Permissions)
         try {
             await drive.permissions.create({
                 fileId: driveFileId,
@@ -137,18 +145,20 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
                 }
             });
         } catch (shareError) {
-            console.warn("⚠️ Could not share file, but continuing...", shareError.message);
+            console.warn("⚠️ Could not share file globally, but continuing...", shareError.message);
         }
 
-        // 10. Get links
+        // 11. Links
         const driveFileLink = `https://drive.google.com/file/d/${driveFileId}/view`;
         const driveFolderLink = `https://drive.google.com/drive/folders/${courseFolderId}`;
-        const classroomLink = assignment.alternateLink ||
-            `https://classroom.google.com/c/${assignment.courseId}/a/${assignment.googleClassroomAssignmentId}`;
+        
+        // Construct valid classroom link if possible
+        let classroomLink = assignment.alternateLink;
+        if (!classroomLink && assignment.courseId && assignment.googleClassroomAssignmentId) {
+             classroomLink = `https://classroom.google.com/c/${assignment.courseId}/a/${assignment.googleClassroomAssignmentId}`;
+        }
 
-        // 11. Cleanup and Update DB
-        fs.unlinkSync(pdfPath);
-
+        // 12. Update Database (No file cleanup needed!)
         assignment.status = 'submitted';
         assignment.submissionInfo = {
             submittedAt: new Date(),
@@ -160,13 +170,13 @@ export const submitAssignment = async (solutionId, userId, editedContent = null)
 
         return {
             success: true,
-            message: "PDF uploaded to organized Drive folder!",
+            message: "PDF uploaded successfully!",
             driveFileId,
             driveFileLink,
             driveFolderLink,
             classroomLink,
             fileName: `Solution - ${assignment.title}.pdf`,
-            folderPath: `${mainFolderName}/${courseName}`
+            folderPath: `${mainFolderName}/${safeCourseName}`
         };
 
     } catch (error) {
