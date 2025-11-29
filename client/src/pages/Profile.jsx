@@ -70,43 +70,27 @@ const Profile = () => {
           <button
             onClick={() => setShowApiKey(v => !v)}
             className="text-zinc-400 hover:text-indigo-400"
-            title={showApiKey ? "Hide" : "Show"}
-          >
-            {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-          <Button size="sm" onClick={handleApiKeySave}>Save</Button>
-        </div>
-        {!apiKey && (
-          <div className="flex items-center gap-2 text-orange-400 bg-orange-500/10 px-3 py-2 rounded">
-            <AlertTriangle size={16} /> Gemini API Key not set!
-          </div>
-        )}
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Edit3 className="text-indigo-400" size={20} />
-            <span className="text-white font-medium">Custom Prompt for AI Solutions:</span>
-          </div>
-          {editingPrompt ? (
-            <div className="flex gap-2">
-              <textarea
-                className="bg-zinc-900 text-white px-3 py-2 rounded-lg w-full border border-zinc-700 focus:outline-none"
-                rows={3}
-                value={customPrompt}
-                onChange={e => setCustomPrompt(e.target.value)}
-                placeholder="e.g. Write solutions in a friendly, step-by-step style... . But Currently not linked to backend"
-              />
-              <Button size="sm" onClick={handlePromptSave}>Save</Button>
-            </div>
-          ) : (
-            <div className="flex gap-2 items-start">
-              <div className="bg-zinc-900 text-zinc-200 px-3 py-2 rounded-lg w-full border border-zinc-700 min-h-[48px]">
-                {customPrompt || <span className="text-zinc-500">No custom prompt set.</span>}
+            {editingPrompt ? (
+              <div className="flex gap-2">
+                <textarea
+                  className="bg-zinc-900 text-white px-3 py-2 rounded-lg w-full border border-zinc-700 focus:outline-none"
+                  rows={3}
+                  value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value)}
+                  placeholder="e.g. Write solutions in a friendly, step-by-step style... . But Currently not linked to backend"
+                />
+                <Button size="sm" onClick={handlePromptSave}>Save</Button>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => setEditingPrompt(true)}>
-                Edit
-              </Button>
-            </div>
-          )}
+            ) : (
+              <div className="flex gap-2 items-start">
+                <div className="bg-zinc-900 text-zinc-200 px-3 py-2 rounded-lg w-full border border-zinc-700 min-h-[48px]">
+                  {customPrompt || <span className="text-zinc-500">No custom prompt set.</span>}
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setEditingPrompt(true)}>
+                  Edit
+                </Button>
+              </div>
+            )}
         </div>
       </div>
     </div>
