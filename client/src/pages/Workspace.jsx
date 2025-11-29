@@ -137,8 +137,8 @@ const Workspace = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
-      <div className="lg:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
+      <div className="md:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
         <GlassCard className="flex-shrink-0 flex flex-col gap-4" hoverEffect={false}>
           <div>
             <h1 className="text-lg font-bold text-white mb-2 line-clamp-2">{assignment?.title}</h1>
@@ -197,17 +197,17 @@ const Workspace = () => {
         </div>
       </div>
 
-      <div className="lg:col-span-9 h-full flex flex-col">
-        <div className="flex gap-2 mb-4">
-          <button onClick={() => setActiveTab('ai')} className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+      <div className="md:col-span-8 h-full flex flex-col">
+        <div className="flex gap-2 mb-4 overflow-x-auto">
+          <button onClick={() => setActiveTab('ai')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
             <span className="flex items-center gap-2"><Sparkles size={16} />AI Response</span>
           </button>
           {docFileId && (
             <>
-              <button onClick={() => setActiveTab('pdf')} className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+              <button onClick={() => setActiveTab('pdf')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
                 <span className="flex items-center gap-2"><FileIcon size={16} />Document Viewer</span>
               </button>
-              <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+              <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
                 <span className="flex items-center gap-2"><MessageSquare size={16} />Chat with Document</span>
               </button>
             </>

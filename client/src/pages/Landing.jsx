@@ -44,7 +44,7 @@ const Landing = () => {
                         Now with Gemini 2.5 Flash Support
                     </div>
 
-                    <h1 className="text-5xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400">
+                    <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400">
                         Master your coursework with <span className="text-indigo-400">AI Superpowers</span>
                     </h1>
 

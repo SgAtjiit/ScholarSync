@@ -96,7 +96,7 @@ const Dashboard = () => {
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Welcome & Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-4 flex justify-between items-end mb-2">
+        <div className="md:col-span-4 flex flex-col md:flex-row justify-between items-start md:items-end mb-2 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Welcome back, {user.name.split(' ')[0]}</h1>
             <p className="text-zinc-400">Here is your academic overview.</p>

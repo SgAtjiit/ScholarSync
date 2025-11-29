@@ -42,7 +42,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto mt-10 bg-[#18181b] rounded-xl shadow-lg p-8 space-y-8 animate-fade-in">
+    <div className="max-w-xl mx-auto mt-10 px-4 md:px-0 bg-[#18181b] rounded-xl shadow-lg p-6 md:p-8 space-y-8 animate-fade-in">
       <h2 className="text-2xl font-bold text-white mb-4">Profile</h2>
 
       <div className="space-y-6">

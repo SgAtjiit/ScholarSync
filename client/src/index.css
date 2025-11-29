@@ -8,6 +8,17 @@
 
 body {
   @apply bg-[#09090b] text-zinc-100 antialiased selection:bg-indigo-500/30;
+  font-size: 16px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  .ProseMirror {
+    font-size: 14px;
+  }
 }
 
 /* Custom Scrollbar */
