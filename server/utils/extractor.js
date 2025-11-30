@@ -1,8 +1,11 @@
 import mammoth from 'mammoth';
 import axios from 'axios';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import dotenv from 'dotenv';
 
-// Helper to download file from Google Drive
+dotenv.config();
+
+// Helper to download file
 const downloadFile = async (fileId, accessToken) => {
   try {
     const response = await axios({
@@ -13,11 +16,7 @@ const downloadFile = async (fileId, accessToken) => {
     });
     return response.data;
   } catch (error) {
-    if (error.response && error.response.status === 404) {
-      console.warn(`⚠️ File not found (404): ${fileId}. It might be a restricted file.`);
-    } else {
-      console.error(`❌ Download failed for ${fileId}: ${error.message}`);
-    }
+    console.warn(`Download warning for ${fileId}: ${error.message}`);
     return null;
   }
 };
@@ -30,24 +29,20 @@ const extractIpynb = (buffer) => {
     let text = "";
     if (notebook.cells && Array.isArray(notebook.cells)) {
       notebook.cells.forEach(cell => {
-        const cellType = cell.cell_type?.toUpperCase() || 'UNKNOWN';
         const source = Array.isArray(cell.source) ? cell.source.join('') : (cell.source || '');
-        text += `\n[${cellType} CELL]:\n${source}\n`;
+        if(source.trim()) text += `\n${source}\n`;
       });
     }
     return text;
   } catch (e) {
-    console.error("Error extracting IPYNB:", e);
-    return "Error parsing notebook content.";
+    return "";
   }
 };
 
 /**
  * Main Extraction Function
- * UPDATED: Now accepts apiKey to use User's Personal Key for PDF processing
  */
 export const extractTextFromMaterials = async (materials, accessToken, apiKey) => {
-
   if (!materials || materials.length === 0) {
     return { combinedText: "", methodsUsed: [] };
   }
@@ -57,111 +52,93 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
 
   for (const mat of materials) {
     const file = mat.driveFile?.driveFile || mat.driveFile;
-
     if (!file || !file.id) continue;
 
     const title = file.title || 'Unknown File';
     const mimeType = file.mimeType || '';
-
-    // Skip unsupported binaries
-    if (title.endsWith('.zip') || title.endsWith('.exe') || title.endsWith('.png') || title.endsWith('.jpg')) {
-      continue;
-    }
+    
+    // Safety check for binaries
+    if (title.match(/\.(zip|exe|dll|png|jpg|jpeg)$/i)) continue;
 
     const fileBuffer = await downloadFile(file.id, accessToken);
     if (!fileBuffer) continue;
 
     try {
+      let extracted = "";
+
       // ---------------------------------------------------------
-      // PDF EXTRACTION (GEMINI ONLY APPROACH)
+      // PDF EXTRACTION (GEMINI VISION)
       // ---------------------------------------------------------
       if (mimeType.includes('pdf') || title.toLowerCase().endsWith('.pdf')) {
-
         if (!apiKey) {
-          console.warn(`⚠️ Skipping PDF ${title}: No Gemini API Key provided for analysis.`);
-          combinedText += `\n\n[ERROR: Could not extract PDF. API Key missing.]\n`;
-          continue;
-        }
-
-        // Initialize Gemini with User's Key
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const gemini_model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
-        const model = genAI.getGenerativeModel({ model: gemini_model });
-
-        const base64Pdf = fileBuffer.toString('base64');
-
-        const result = await model.generateContent([
-          {
-            inlineData: {
-              mimeType: "application/pdf",
-              data: base64Pdf
-            }
-          },
-          {
-            text: `You are a data extraction engine. Your job is to convert this PDF entirely into text.
-            
-            INSTRUCTIONS:
-            1. Extract ALL text content exactly as written.
-            2. For every DIAGRAM, IMAGE, CHART, or TABLE:
-               - Do NOT skip it.
-               - Analyze it visually.
-               - Convert it into a detailed text description or text-based table representation.
-               - Label it clearly (e.g., "[Visual Analysis of Chart: Growth Trends]").
-            
-            OUTPUT FORMAT:
-            Return ONLY the extracted text content. Do not include markdown formatting like \`\`\`json or \`\`\`html. Just raw, readable text that represents the entire document content.`
-          }
-        ]);
-
-        const geminiContent = await result.response.text();
-
-        if (geminiContent && geminiContent.length > 0) {
-          combinedText += `\n\n--- SOURCE: ${title} (PDF - AI EXTRACTED) ---\n${geminiContent}`;
-          methodsUsed.push('gemini-vision-only');
+            combinedText += `\n[PDF Skipped: API Key missing]\n`;
         } else {
-          console.warn(`⚠️ Gemini returned empty response for PDF: ${title}`);
+            const genAI = new GoogleGenerativeAI(apiKey);
+            // Use env var or fallback, don't hardcode if possible
+            const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite"; 
+            const model = genAI.getGenerativeModel({ model: modelName });
+
+            const result = await model.generateContent([
+                {
+                    inlineData: {
+                        mimeType: "application/pdf",
+                        data: fileBuffer.toString('base64')
+                    }
+                },
+                {
+                    text: `Extract all legible text from this document. 
+                    - If it contains diagrams, describe them in text (e.g., "[Diagram: Logic Gate showing AND operation]").
+                    - If it is blank, blurry, or just noise, return exactly 'NO_TEXT_FOUND'.
+                    - Do NOT return markdown formatting.`
+                }
+            ]);
+            
+            const rawText = result.response.text();
+            
+            // Check for the specific failure flag or empty response
+            if (rawText && !rawText.includes("NO_TEXT_FOUND") && rawText.trim().length > 20) {
+                extracted = rawText;
+                methodsUsed.push('gemini-vision');
+            } else {
+                console.warn(`⚠️ Gemini found no usable text in PDF: ${title}`);
+            }
         }
       }
-
+      
       // ---------------------------------------------------------
       // DOCX EXTRACTION (Mammoth)
       // ---------------------------------------------------------
       else if (mimeType.includes('document') || title.toLowerCase().endsWith('.docx')) {
         const result = await mammoth.extractRawText({ buffer: fileBuffer });
-        const cleanText = result.value ? result.value.trim() : "";
-
-        if (cleanText.length > 0) {
-          combinedText += `\n\n--- SOURCE: ${title} (DOCX) ---\n${cleanText}`;
-          methodsUsed.push('mammoth');
+        if (result.value) {
+            extracted = result.value;
+            methodsUsed.push('mammoth');
         }
       }
-
+      
       // ---------------------------------------------------------
-      // NOTEBOOK EXTRACTION
+      // NOTEBOOK (IPYNB)
       // ---------------------------------------------------------
       else if (title.toLowerCase().endsWith('.ipynb')) {
-        const ipynbText = extractIpynb(fileBuffer);
-        if (ipynbText.length > 0) {
-          combinedText += `\n\n--- SOURCE: ${title} (NOTEBOOK) ---\n${ipynbText}`;
-          methodsUsed.push('ipynb-parser');
-        }
+        extracted = extractIpynb(fileBuffer);
+        if (extracted) methodsUsed.push('ipynb');
       }
-
+      
       // ---------------------------------------------------------
-      // PLAIN TEXT
+      // PLAIN TXT
       // ---------------------------------------------------------
       else if (mimeType.includes('text/plain') || title.toLowerCase().endsWith('.txt')) {
-        const textData = fileBuffer.toString('utf-8');
-        combinedText += `\n\n--- SOURCE: ${title} (TXT) ---\n${textData}`;
+        extracted = fileBuffer.toString('utf-8');
         methodsUsed.push('text');
       }
 
-      else {
-        // File type not supported
+      // Final Append
+      if (extracted && extracted.trim().length > 20) {
+          combinedText += `\n\n--- FILE: ${title} ---\n${extracted}\n`;
       }
 
     } catch (err) {
-      console.error(`❌ Failed to extract content from ${title}:`, err.message);
+      console.error(`Extraction failed for ${title}:`, err.message);
     }
   }
 
