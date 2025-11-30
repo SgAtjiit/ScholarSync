@@ -9,7 +9,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   // Check for persistent session
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }) => {
   const login = useGoogleLogin({
     flow: 'auth-code',
     scope: 'https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/drive.file email profile openid',
+    prompt: 'consent',
     onSuccess: async ({ code }) => {
       try {
         setLoading(true);
