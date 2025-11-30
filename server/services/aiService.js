@@ -381,14 +381,12 @@ CRITICAL FORMATTING & CONTENT RULES:
 - Start with: <h1>${title}</h1>
 - No extra special characters (*, /, #) or useless blank lines.
 - Do NOT include the word "html".
-- Explanation and Solution sections must be separate.
 - **Formatting MUST remain perfect even if 50, 100, or unlimited questions are processed.**
-- The solution MUST follow: **Q(No) - Ans -** format.
-
+- The solution MUST follow: Q(No) - Ans - format.
 ANSWERING RULES (VERY IMPORTANT):
 1. **Theory questions**
    - Max **10–14 lines**
-   - Prefer **5–6 bullet points**
+   - Max **5–6 bullet points**
    - Crisp, short, to-the-point
    - No unnecessary length
 
@@ -405,7 +403,6 @@ ANSWERING RULES (VERY IMPORTANT):
 
 STRUCTURE GUIDELINES:
 - <h1> main title
-- <h2> for "Drafted Explanation" and "Drafted Solution"
 - For each question in solution:
   <h3>Q{N} - [short question title]</h3>
   <p><strong>Ans -</strong></p>
@@ -414,9 +411,9 @@ STRUCTURE GUIDELINES:
     - <ul> for theory bullets
     - <pre><code>...</code></pre> for direct code
 - Keep spacing consistent and clean.
-
+Note:Dont include anything extra other than the answers and also dont try to over exeed the length of solution and so give to the point solutions. And even if the length of the response increases too much dont forget the formatting its a must !!!
 OUTPUT:
-Return ONLY the final clean HTML containing drafted explanation + drafted solution.
+Return ONLY the final clean HTML containing only drafted solution.
 `
 };
 
