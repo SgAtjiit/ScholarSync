@@ -132,6 +132,149 @@ dotenv.config();
 // `
 // };
 
+// const PROMPT_TEMPLATES = {
+//   explain: (title, description, content) => `
+// You are an expert academic tutor who helps a student understand their assignment without giving the direct answer.
+
+// ASSIGNMENT TITLE: ${title}
+
+// DESCRIPTION: ${description || "No description provided"}
+
+// ASSIGNMENT CONTENT:
+// ${content}
+
+// CRITICAL FORMATTING & CONTENT REQUIREMENTS:
+// - Respond with clean, semantic HTML only (no surrounding explanation or commentary).
+// - Avoid extra special characters (no stray '*', '/', '#', excessive punctuation).
+// - Avoid large blocks of extra whitespace or many consecutive blank lines.
+// - Use clear content segregation and consistent spacing so the output is easy to read and copy.
+// - The explanation must be completely separate from the drafted solution.
+// - Do NOT give direct answers — guide learning and show approach, not final answers.
+// - Do NOT include the literal word 'html' in the output.
+// - **No matter how many questions are processed, formatting must remain perfectly consistent.**
+
+// INSTRUCTIONS (Explain version):
+// 1. Break down the core concepts and topics covered by this assignment.
+// 2. Explain key theories, formulas, or principles needed to approach it.
+// 3. For maths/science/algorithms: give step-by-step reasoning (no final numeric answers) and highlight formulas.
+// 4. For non-math topics: use short, bulleted conceptual steps.
+// 5. Provide study guidance, understanding tips, and resource directions.
+// 6. Use semantic HTML tags: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>.
+// 7. Keep content concise, clean, and well spaced.
+
+// OUTPUT: Return only the HTML content for the explanation.
+// `,
+
+//   quiz: (title, description, content, questionCount) => `
+// You are creating a practice quiz to test understanding of this assignment content.
+
+// ASSIGNMENT TITLE: ${title}
+
+// DESCRIPTION: ${description || "No description provided"}
+
+// ASSIGNMENT CONTENT:
+// ${content}
+
+// CRITICAL INSTRUCTIONS:
+// 1. Generate EXACTLY ${questionCount} multiple-choice questions.
+// 2. Each question must have exactly 4 options.
+// 3. Questions should test understanding, not recall.
+// 4. Vary difficulty appropriately.
+// 5. YOU MUST respond with VALID JSON ONLY. No markdown, no code blocks, no extra text.
+// 6. Avoid extra special characters or unnecessary whitespace.
+// 7. **No matter how many questions are processed, JSON structure must remain perfectly consistent.**
+
+// REQUIRED JSON FORMAT:
+// {
+//   "questions": [
+//     {
+//       "question": "Question text here?",
+//       "options": ["Option A", "Option B", "Option C", "Option D"],
+//       "correctAnswer": 0
+//     }
+//   ]
+// }
+
+// The correctAnswer is the 0-based index of correct option.
+// `,
+
+//   flashcards: (title, description, content) => `
+// You are a study aid designer. Extract key terms, concepts, and definitions from this assignment to create flashcards.
+
+// ASSIGNMENT TITLE: ${title}
+
+// DESCRIPTION: ${description || "No description provided"}
+
+// ASSIGNMENT CONTENT:
+// ${content}
+
+// CRITICAL INSTRUCTIONS:
+// 1. Extract 8–12 important terms or definitions.
+// 2. EACH flashcard must have:
+//    - FRONT: 1–10 words
+//    - BACK: 1–3 clear sentences
+// 3. YOU MUST respond only in VALID JSON (no markdown, no code blocks).
+// 4. Avoid extra special characters and excessive spaces.
+// 5. **No matter how many flashcards are created, JSON formatting must always remain consistent.**
+
+// REQUIRED JSON FORMAT:
+// {
+//   "flashcards": [
+//     {
+//       "front": "Term or concept",
+//       "back": "Definition or explanation"
+//     }
+//   ]
+// }
+// `,
+
+//   draft: (title, description, content) => `
+// You are an expert academic tutor generating a polished, ready-to-submit assignment solution.
+
+// ASSIGNMENT TITLE: ${title}
+
+// CONTEXT / DESCRIPTION:
+// ${description || "No specific description provided."}
+
+// ATTACHED CONTENT (Extracted from files):
+// ${content}
+
+// CRITICAL FORMATTING & CONTENT REQUIREMENTS:
+// - Respond with clean, semantic HTML only.
+// - Must begin with <h1>${title}</h1>
+// - Avoid extra characters (*, /, # etc.) and avoid extra spaces or blank lines.
+// - Do NOT include the literal word 'html'.
+// - Explanation and Solution must be separate and clearly labeled.
+// - Solution must strictly follow the "Q(No) - Ans -" format.
+// - **Maths/science/algorithms: step-by-step ordered list, formulas highlighted.**
+// - **Other subjects: short bulleted list answers.**
+// - No Introduction or Conclusion unless originally required.
+// - Keep answers concise.
+// - **Even if there are MANY questions, formatting must NEVER break — numbering, structure, and HTML hierarchy must remain perfect.**
+
+// STRUCTURE & TAG GUIDELINES:
+// - <h1> for main title
+// - <h2> for "Drafted Explanation" and "Drafted Solution"
+// - For each question:
+//   <h3>Q{N} - [short title if available]</h3>
+//   <p><strong>Ans -</strong></p>
+//   Then:
+//     - <ol> for step-by-step numeric solving (math/science/algorithms)
+//     - <ul> for conceptual/bulleted answers
+// - Keep steps short and formulas highlighted with <strong> or <em>.
+// - Maintain tight, clean formatting with consistent spacing.
+// - No unnecessary line breaks or special characters.
+
+// INSTRUCTIONS (Draft Version):
+// 1. Answer all questions point-wise with clear, slightly detailed explanations.
+// 2. Show step-by-step work for math/science/algorithm questions.
+// 3. Use 3–6 concise bullet points for theory questions.
+// 4. Keep responses short but complete.
+
+// OUTPUT: Return only the clean, final HTML.
+// `
+// };
+
 const PROMPT_TEMPLATES = {
   explain: (title, description, content) => `
 You are an expert academic tutor who helps a student understand their assignment without giving the direct answer.
@@ -144,25 +287,23 @@ ASSIGNMENT CONTENT:
 ${content}
 
 CRITICAL FORMATTING & CONTENT REQUIREMENTS:
-- Respond with clean, semantic HTML only (no surrounding explanation or commentary).
-- Avoid extra special characters (no stray '*', '/', '#', excessive punctuation).
-- Avoid large blocks of extra whitespace or many consecutive blank lines.
-- Use clear content segregation and consistent spacing so the output is easy to read and copy.
-- The explanation must be completely separate from the drafted solution.
-- Do NOT give direct answers — guide learning and show approach, not final answers.
-- Do NOT include the literal word 'html' in the output.
-- **No matter how many questions are processed, formatting must remain perfectly consistent.**
+- Respond with clean, semantic HTML only.
+- No extra special characters (*, /, # etc.).
+- No unnecessary blank lines or excessive spacing.
+- Do NOT include the literal word "html".
+- Explanation must be clear, structured, and educational.
+- **Formatting must stay perfect even if unlimited questions are processed.**
 
-INSTRUCTIONS (Explain version):
-1. Break down the core concepts and topics covered by this assignment.
-2. Explain key theories, formulas, or principles needed to approach it.
-3. For maths/science/algorithms: give step-by-step reasoning (no final numeric answers) and highlight formulas.
-4. For non-math topics: use short, bulleted conceptual steps.
-5. Provide study guidance, understanding tips, and resource directions.
-6. Use semantic HTML tags: <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>.
-7. Keep content concise, clean, and well spaced.
+INSTRUCTIONS (Explain Version):
+1. Break down key concepts and theories required for the assignment.
+2. Use <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> for structure.
+3. Maths/science/algorithm topics → explain step-by-step logic (no final numeric answers).
+4. Non-math conceptual topics → use short bullet points (5–6 points max).
+5. Keep content crisp, readable, and well-spaced.
+6. Avoid long paragraphs; prefer short segments.
+7. Ensure complete clarity while keeping content compact.
 
-OUTPUT: Return only the HTML content for the explanation.
+OUTPUT: Only clean HTML explanation.
 `,
 
   quiz: (title, description, content, questionCount) => `
@@ -176,30 +317,27 @@ ASSIGNMENT CONTENT:
 ${content}
 
 CRITICAL INSTRUCTIONS:
-1. Generate EXACTLY ${questionCount} multiple-choice questions.
+1. Generate EXACTLY ${questionCount} MCQs.
 2. Each question must have exactly 4 options.
-3. Questions should test understanding, not recall.
-4. Vary difficulty appropriately.
-5. YOU MUST respond with VALID JSON ONLY. No markdown, no code blocks, no extra text.
-6. Avoid extra special characters or unnecessary whitespace.
-7. **No matter how many questions are processed, JSON structure must remain perfectly consistent.**
+3. Questions must test understanding, not repetition.
+4. Respond ONLY in valid JSON (no markdown/code blocks).
+5. Avoid extra special characters or unnecessary whitespace.
+6. **Formatting must remain consistent irrespective of number of questions.**
 
 REQUIRED JSON FORMAT:
 {
   "questions": [
     {
-      "question": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "Question text?",
+      "options": ["A", "B", "C", "D"],
       "correctAnswer": 0
     }
   ]
 }
-
-The correctAnswer is the 0-based index of correct option.
 `,
 
   flashcards: (title, description, content) => `
-You are a study aid designer. Extract key terms, concepts, and definitions from this assignment to create flashcards.
+You are a study aid designer. Create concise, high-quality flashcards.
 
 ASSIGNMENT TITLE: ${title}
 
@@ -209,20 +347,19 @@ ASSIGNMENT CONTENT:
 ${content}
 
 CRITICAL INSTRUCTIONS:
-1. Extract 8–12 important terms or definitions.
-2. EACH flashcard must have:
-   - FRONT: 1–10 words
-   - BACK: 1–3 clear sentences
-3. YOU MUST respond only in VALID JSON (no markdown, no code blocks).
-4. Avoid extra special characters and excessive spaces.
-5. **No matter how many flashcards are created, JSON formatting must always remain consistent.**
+1. Extract 8–12 key terms or definitions.
+2. Front = 1–10 words.
+3. Back = 1–3 clear sentences.
+4. Respond ONLY in valid JSON.
+5. Avoid unnecessary whitespace or special characters.
+6. **Regardless of number of cards, structure must remain perfect.**
 
 REQUIRED JSON FORMAT:
 {
   "flashcards": [
     {
-      "front": "Term or concept",
-      "back": "Definition or explanation"
+      "front": "Term",
+      "back": "Explanation"
     }
   ]
 }
@@ -236,45 +373,52 @@ ASSIGNMENT TITLE: ${title}
 CONTEXT / DESCRIPTION:
 ${description || "No specific description provided."}
 
-ATTACHED CONTENT (Extracted from files):
+ATTACHED CONTENT:
 ${content}
 
-CRITICAL FORMATTING & CONTENT REQUIREMENTS:
-- Respond with clean, semantic HTML only.
-- Must begin with <h1>${title}</h1>
-- Avoid extra characters (*, /, # etc.) and avoid extra spaces or blank lines.
-- Do NOT include the literal word 'html'.
-- Explanation and Solution must be separate and clearly labeled.
-- Solution must strictly follow the "Q(No) - Ans -" format.
-- **Maths/science/algorithms: step-by-step ordered list, formulas highlighted.**
-- **Other subjects: short bulleted list answers.**
-- No Introduction or Conclusion unless originally required.
-- Keep answers concise.
-- **Even if there are MANY questions, formatting must NEVER break — numbering, structure, and HTML hierarchy must remain perfect.**
+CRITICAL FORMATTING & CONTENT RULES:
+- Output ONLY clean, semantic HTML.
+- Start with: <h1>${title}</h1>
+- No extra special characters (*, /, #) or useless blank lines.
+- Do NOT include the word "html".
+- Explanation and Solution sections must be separate.
+- **Formatting MUST remain perfect even if 50, 100, or unlimited questions are processed.**
+- The solution MUST follow: **Q(No) - Ans -** format.
 
-STRUCTURE & TAG GUIDELINES:
-- <h1> for main title
+ANSWERING RULES (VERY IMPORTANT):
+1. **Theory questions**
+   - Max **10–14 lines**
+   - Prefer **5–6 bullet points**
+   - Crisp, short, to-the-point
+   - No unnecessary length
+
+2. **Code questions**
+   - Output **direct clean code only**
+   - No explanation unless explicitly asked
+   - Use proper indentation and formatting inside <pre><code> blocks (without writing "html")
+
+3. **Maths / science / algorithmic / analytical questions**
+   - Show **step-by-step solution**
+   - Highlight formulas using <strong> / <em>
+   - Steps must be **short, essential, and not overly long**
+   - No unnecessary processing or lengthy writing
+
+STRUCTURE GUIDELINES:
+- <h1> main title
 - <h2> for "Drafted Explanation" and "Drafted Solution"
-- For each question:
-  <h3>Q{N} - [short title if available]</h3>
+- For each question in solution:
+  <h3>Q{N} - [short question title]</h3>
   <p><strong>Ans -</strong></p>
   Then:
-    - <ol> for step-by-step numeric solving (math/science/algorithms)
-    - <ul> for conceptual/bulleted answers
-- Keep steps short and formulas highlighted with <strong> or <em>.
-- Maintain tight, clean formatting with consistent spacing.
-- No unnecessary line breaks or special characters.
+    - <ol> for step-by-step (math/logic/algorithm)
+    - <ul> for theory bullets
+    - <pre><code>...</code></pre> for direct code
+- Keep spacing consistent and clean.
 
-INSTRUCTIONS (Draft Version):
-1. Answer all questions point-wise with clear, slightly detailed explanations.
-2. Show step-by-step work for math/science/algorithm questions.
-3. Use 3–6 concise bullet points for theory questions.
-4. Keep responses short but complete.
-
-OUTPUT: Return only the clean, final HTML.
+OUTPUT:
+Return ONLY the final clean HTML containing drafted explanation + drafted solution.
 `
 };
-
 
 /**
  * Main AI Service Function with Multi-Mode Support
