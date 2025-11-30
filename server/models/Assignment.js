@@ -11,7 +11,8 @@ const assignmentSchema = new mongoose.Schema({
   alternateLink: String, // Link to view in Classroom
   status: {
     type: String,
-    enum: ['detected', 'processing', 'ready', 'submitted'],
+    // ✨ FIX: Added 'assigned' and 'missing' to the allowed values
+    enum: ['detected', 'processing', 'ready', 'submitted', 'assigned', 'missing'],
     default: 'detected'
   },
 
