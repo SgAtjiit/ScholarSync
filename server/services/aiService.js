@@ -10,11 +10,11 @@ const cleanAndParseJSON = (text) => {
     try {
         // Remove markdown code blocks (```json ... ```)
         let cleaned = text.replace(/```json/g, '').replace(/```/g, '');
-        
+
         // Find the first '{' and last '}' to strip external noise
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
-        
+
         if (firstBrace !== -1 && lastBrace !== -1) {
             cleaned = cleaned.substring(firstBrace, lastBrace + 1);
         }
@@ -31,7 +31,7 @@ const cleanHTML = (text) => {
 };
 
 const PROMPT_TEMPLATES = {
-  explain: (title, description, content) => `
+    explain: (title, description, content) => `
 You are an expert academic tutor.
 ASSIGNMENT TITLE: ${title}
 DESCRIPTION: ${description || "No description provided"}
@@ -47,7 +47,7 @@ INSTRUCTIONS:
 OUTPUT: Clean HTML only.
 `,
 
-  quiz: (title, description, content, questionCount) => `
+    quiz: (title, description, content, questionCount) => `
 You are a quiz generator.
 ASSIGNMENT TITLE: ${title}
 CONTENT:
@@ -70,7 +70,7 @@ REQUIRED JSON FORMAT:
 }
 `,
 
-  flashcards: (title, description, content) => `
+    flashcards: (title, description, content) => `
 You are a flashcard generator.
 ASSIGNMENT TITLE: ${title}
 CONTENT:
@@ -92,7 +92,7 @@ REQUIRED JSON FORMAT:
 }
 `,
 
-  draft: (title, description, content) => `
+    draft: (title, description, content) => `
 You are an expert solver.
 ASSIGNMENT TITLE: ${title}
 CONTENT:
@@ -121,8 +121,8 @@ const validateExtractedContent = async (text, apiKey) => {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
         // Use a fast model for validation
-        const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash"; 
-        const model = genAI.getGenerativeModel({ 
+        const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+        const model = genAI.getGenerativeModel({
             model: modelName,
             generationConfig: { responseMimeType: "application/json" }
         });
@@ -167,7 +167,7 @@ export const generateSolution = async (assignmentId, userId, apiKey, mode = 'dra
 
     // --- STEP 1: STRICT CONTENT VALIDATION ---
     console.log(`[AI Service] Validating content for: ${assignment.title}`);
-    
+
     // Check 1: Length
     if (extractedText.length < 50) {
         throw new Error("Extracted content is too short to generate a solution. Please upload a clearer file.");
@@ -175,7 +175,7 @@ export const generateSolution = async (assignmentId, userId, apiKey, mode = 'dra
 
     // Check 2: Semantic Analysis (The Gatekeeper)
     const validation = await validateExtractedContent(extractedText, apiKey);
-    
+
     if (!validation.isValid) {
         const msg = `Content Validation Failed: ${validation.reason || "File does not contain valid study material."}`;
         console.error(msg);
@@ -238,7 +238,7 @@ export const generateSolution = async (assignmentId, userId, apiKey, mode = 'dra
             });
         }
 
-        assignment.status = 'completed';
+        assignment.status = 'ready';
         await assignment.save();
 
         return solution;

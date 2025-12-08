@@ -7,6 +7,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Workspace from "./pages/Workspace";
 import Profile from "./pages/Profile";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import React, { useEffect } from "react"; // ✨ ADDED: useEffect import
 import { Toaster, toast } from 'react-hot-toast'; // ✨ ADDED: toast import
 
@@ -56,6 +58,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
 
           {/* Protected Routes */}
           <Route path="/dashboard" element={
