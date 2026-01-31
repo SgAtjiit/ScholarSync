@@ -69,7 +69,7 @@ Make it educational and easy to understand for a student who is learning these t
 
 Return ONLY valid JSON in this exact format:
 {
-  "quiz": [
+  "questions": [
     {
       "id": 1,
       "question": "Clear question text",
@@ -168,20 +168,47 @@ ${mode === 'flashcards' ? 'Create study flashcards for the key terms and concept
     let text;
     if (mode === 'quiz' || mode === 'flashcards') {
         // Accept either already-parsed object or string JSON from the model
+        let parsed;
         if (typeof rawResponse === 'object') {
-            text = rawResponse;
+            parsed = rawResponse;
         } else {
             try {
-                text = cleanAndParseJSON(String(rawResponse));
+                parsed = cleanAndParseJSON(String(rawResponse));
             } catch (e) {
                 // Fallbacks: try direct JSON.parse, then return error container
                 try {
-                    text = JSON.parse(String(rawResponse));
+                    parsed = JSON.parse(String(rawResponse));
                 } catch (e2) {
-                    text = { error: 'Parsing failed', raw: String(rawResponse) };
+                    parsed = { error: 'Parsing failed', raw: String(rawResponse) };
                 }
             }
         }
+        
+        // Normalize quiz response - frontend expects { questions: [...] }
+        if (mode === 'quiz') {
+            if (parsed.quiz && !parsed.questions) {
+                parsed.questions = parsed.quiz;
+                delete parsed.quiz;
+            }
+            // Handle case where model returns array directly
+            if (Array.isArray(parsed)) {
+                parsed = { questions: parsed };
+            }
+        }
+        
+        // Normalize flashcards response - frontend expects { flashcards: [...] }
+        if (mode === 'flashcards') {
+            if (parsed.cards && !parsed.flashcards) {
+                parsed.flashcards = parsed.cards;
+                delete parsed.cards;
+            }
+            // Handle case where model returns array directly
+            if (Array.isArray(parsed)) {
+                parsed = { flashcards: parsed };
+            }
+        }
+        
+        text = parsed;
     } else {
         // For HTML/draft/explain modes ensure we return clean HTML string
         if (typeof rawResponse === 'string') text = cleanHTML(rawResponse);
