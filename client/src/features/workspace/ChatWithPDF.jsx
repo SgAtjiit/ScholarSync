@@ -23,11 +23,11 @@ const ChatWithPDF = ({ pdfFileId }) => {
         if (!input.trim() || loading) return;
 
         // 1. NEW CHECK
-        if (!localStorage.getItem('gemini_api_key')) {
-            toast.error("Gemini API Key is missing!"); // ✨ ADDED: Toast
+        if (!localStorage.getItem('groq_api_key')) {
+            toast.error("Groq API Key is missing!"); // ✨ ADDED: Toast
             setMessages(prev => [...prev, {
                 role: 'ai',
-                content: '⚠️ Please set your Gemini API Key in settings to chat.'
+                content: '⚠️ Please set your Groq API Key in settings to chat.'
             }]);
             return;
         }

@@ -4,28 +4,28 @@ const assignmentSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   googleClassroomAssignmentId: { type: String, required: true },
   courseId: { type: String, required: true },
-  courseName: { type: String }, // Human-readable course name
+  courseName: { type: String },
   title: { type: String, required: true },
-  description: String, // The instructions in the post body
+  description: String,
   dueDate: Date,
-  alternateLink: String, // Link to view in Classroom
+  alternateLink: String,
   status: {
     type: String,
-    // ✨ FIX: Added 'assigned' and 'missing' to the allowed values
-    enum: ['detected', 'processing', 'ready', 'submitted', 'assigned', 'missing'],
+    enum: ['detected', 'processing', 'completed', 'submitted', 'assigned', 'missing','ready'],
     default: 'detected'
   },
 
-  // Attachments found - Using Mixed type to preserve Google Classroom API structure exactly
   materials: [mongoose.Schema.Types.Mixed],
 
-  // The AI Fuel: All text extracted from attachments + description
+  // --- UPDATED SECTION ---
   extractedContent: {
-    fullText: String, // Combined text for the AI
-    extractionMethod: [String] // e.g., ['pdf-parse', 'mammoth']
+    // structuredData will now store the JSON: { questions: {...}, importantInfo: "" }
+    structuredData: { type: mongoose.Schema.Types.Mixed }, 
+    extractionMethod: [String],
+    processedAt: { type: Date },
+    aiModelUsed: { type: String, default: "mixtral-8x7b-32768" }
   },
 
-  // Submission tracking
   submissionInfo: {
     submittedAt: Date,
     driveFileId: String,
@@ -36,7 +36,6 @@ const assignmentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Prevent duplicates
 assignmentSchema.index({ userId: 1, googleClassroomAssignmentId: 1 }, { unique: true });
 
 const Assignment = mongoose.model('Assignment', assignmentSchema);

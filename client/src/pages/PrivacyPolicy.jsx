@@ -65,7 +65,7 @@ const PrivacyPolicy = () => {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">API Keys:</strong> If you provide your own Gemini API key, it is stored locally in your browser and never transmitted to our servers.</span>
+                                    <span><strong className="text-zinc-300">API Keys:</strong> If you provide your own Groq API key, it is stored locally in your browser and never transmitted to our servers.</span>
                                 </li>
                             </ul>
                         </PolicySection>
@@ -102,7 +102,7 @@ const PrivacyPolicy = () => {
                             title="Data Security"
                         >
                             <p className="text-zinc-400 leading-relaxed">
-                                We implement industry-standard security measures to protect your personal information. Your Google OAuth tokens are securely stored and encrypted. We do not sell, trade, or otherwise transfer your personally identifiable information to outside parties. Your Gemini API key, if provided, is stored only in your browser's local storage and is never sent to our servers.
+                                We implement industry-standard security measures to protect your personal information. Your Google OAuth tokens are securely stored and encrypted. We do not sell, trade, or otherwise transfer your personally identifiable information to outside parties. Your Groq API key, if provided, is stored only in your browser's local storage and is never sent to our servers.
                             </p>
                         </PolicySection>
 

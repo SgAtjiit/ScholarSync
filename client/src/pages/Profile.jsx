@@ -12,13 +12,13 @@ const Profile = () => {
   const [editingPrompt, setEditingPrompt] = useState(false);
 
   useEffect(() => {
-    const storedKey = localStorage.getItem("gemini_api_key") || "";
+    const storedKey = localStorage.getItem("groq_api_key") || "";
     setApiKey(storedKey);
     const storedPrompt = localStorage.getItem("custom_prompt") || "";
     setCustomPrompt(storedPrompt);
 
     if (!storedKey) {
-      toast("Gemini API Key not set! Please update your settings.", {
+      toast("Groq API Key not set! Please update your settings.", {
         icon: '⚠️',
         style: {
           border: '1px solid #f97316',
@@ -31,8 +31,8 @@ const Profile = () => {
   }, []);
 
   const handleApiKeySave = () => {
-    localStorage.setItem("gemini_api_key", apiKey);
-    toast.success("Gemini API Key updated successfully!");
+    localStorage.setItem("groq_api_key", apiKey);
+    toast.success("Groq API Key updated successfully!");
   };
 
   const handlePromptSave = () => {
@@ -86,7 +86,7 @@ const Profile = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Key className="text-indigo-400" size={20} />
-              <span className="text-white font-medium">Gemini API Key:</span>
+              <span className="text-white font-medium">Groq API Key:</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full">
               <div className="relative flex-1">
@@ -95,7 +95,7 @@ const Profile = () => {
                   className="bg-zinc-900 text-white px-3 py-2 pr-10 rounded-lg w-full border border-zinc-700 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder="Enter Gemini API Key"
+                  placeholder="Enter Groq API Key"
                 />
                 <button
                   type="button"

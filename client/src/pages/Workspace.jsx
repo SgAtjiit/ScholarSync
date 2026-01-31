@@ -67,9 +67,20 @@ const Workspace = () => {
         const res = await api.post(`/classroom/assignments/${assignmentId}/extract`, { userId: user._id });
         setAssignment(res.data.assignment);
         setLoading(false);
+
+        // Show success message
         if (res.data.message === "Extraction complete") {
           toast.success("Ready for AI! Text extraction completed.");
         }
+
+        // Show warnings about files that couldn't be accessed
+        if (res.data.warnings && res.data.warnings.length > 0) {
+          toast(`Some files couldn't be accessed: ${res.data.warnings.length} file(s)`, {
+            icon: '⚠️',
+            duration: 5000
+          });
+        }
+
         const draftRes = await api.get(`/ai/solutions/${assignmentId}?preferredMode=draft`);
         if (draftRes.data) {
           setSolutions(prev => ({ ...prev, [draftRes.data.mode]: draftRes.data }));
@@ -78,7 +89,17 @@ const Workspace = () => {
       } catch (err) {
         console.error("Extraction error:", err);
         setLoading(false);
-        toast.error("Failed to extract assignment content.");
+
+        // Parse and display specific error messages
+        const errorMessage = err.response?.data?.error || "Failed to extract assignment content.";
+        const failedFiles = err.response?.data?.failedFiles || [];
+
+        if (failedFiles.length > 0) {
+          // Show detailed error for external organization files
+          toast.error(errorMessage, { duration: 6000 });
+        } else {
+          toast.error(errorMessage);
+        }
       }
     };
     if (user) init();
@@ -89,8 +110,8 @@ const Workspace = () => {
     setActiveMode(mode);
     if (solutions[mode]) return;
 
-    if (!localStorage.getItem('gemini_api_key')) {
-      toast.error("You need to set your Gemini API Key in Settings first!");
+    if (!localStorage.getItem('groq_api_key')) {
+      toast.error("You need to set your Groq API Key in Settings first!");
       return;
     }
 

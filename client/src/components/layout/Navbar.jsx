@@ -46,11 +46,11 @@ const Navbar = () => {
               />
             </a>
 
-            {!localStorage.getItem("gemini_api_key") && (
+            {!localStorage.getItem("groq_api_key") && (
               <a href="/profile">
                 <span
                   className="ml-2 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded"
-                  title="Gemini API Key not set!"
+                  title="Groq API Key not set!"
                 >
                   <AlertTriangle size={12} className="inline mr-1" /> API Key
                   Missing

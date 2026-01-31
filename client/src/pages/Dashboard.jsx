@@ -19,10 +19,10 @@ const Dashboard = () => {
 
   // Stats calculation - now more accurate
   const [stats, setStats] = useState({
-    submitted: '',
-    missing: '',
-    assigned: '',
-    total: ''
+    submitted: 'NA',
+    missing: 'NA',
+    assigned: 'NA',
+    total: 'NA'
   });
 
   useEffect(() => {
@@ -60,10 +60,10 @@ const Dashboard = () => {
 
   const handleScan = async () => {
     setStats({
-      submitted: '',
-      missing: '',
-      assigned: '',
-      total: ''
+      submitted: 'NA',
+      missing: 'NA',
+      assigned: 'NA',
+      total: 'NA'
     });
     const confirmScan = window.confirm("Scanning scans all courses. This might take a moment. Continue?");
     if (!confirmScan) return;

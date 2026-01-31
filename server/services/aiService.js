@@ -1,254 +1,250 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import Assignment from '../models/Assignment.js';
 import Solution from '../models/Solution.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// --- HELPER: Clean & Parse JSON (Handles Markdown backticks) ---
+// Helpers
 const cleanAndParseJSON = (text) => {
+    if (typeof text !== 'string') return text;
     try {
-        // Remove markdown code blocks (```json ... ```)
         let cleaned = text.replace(/```json/g, '').replace(/```/g, '');
-
-        // Find the first '{' and last '}' to strip external noise
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
-
-        if (firstBrace !== -1 && lastBrace !== -1) {
-            cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-        }
-
+        if (firstBrace !== -1 && lastBrace !== -1) cleaned = cleaned.substring(firstBrace, lastBrace + 1);
         return JSON.parse(cleaned);
-    } catch (e) {
-        throw new Error("JSON Parsing Failed: AI returned invalid format. " + e.message);
-    }
+    } catch (e) { throw new Error("JSON Parsing Error: " + e.message); }
 };
 
-// --- HELPER: Clean HTML (Handles Markdown backticks) ---
-const cleanHTML = (text) => {
-    return text.replace(/```html/g, '').replace(/```/g, '').trim();
-};
+const cleanHTML = (text) => text.replace(/```html/g, '').replace(/```/g, '').trim();
 
-const PROMPT_TEMPLATES = {
-    explain: (title, description, content) => `
-You are an expert academic tutor.
-ASSIGNMENT TITLE: ${title}
-DESCRIPTION: ${description || "No description provided"}
-CONTENT:
-${content.substring(0, 20000)}
+/**
+ * Get the appropriate system prompt based on mode
+ */
+const getSystemPrompt = (mode, title) => {
+    const prompts = {
+        draft: `You are an expert academic tutor helping students complete their assignments. 
+Your task is to create a COMPLETE, WELL-FORMATTED solution document.
 
-INSTRUCTIONS:
-1. Explain the core concepts clearly.
-2. Use semantic HTML (<h2>, <p>, <ul>, <strong>).
-3. NO Markdown blocks. Output RAW HTML.
-4. Do NOT include the word "html" at the start.
+FORMAT YOUR RESPONSE AS CLEAN HTML that can be directly displayed:
+- Use <h2> for question numbers (e.g., "Question 1")
+- Use <h3> for sub-parts (e.g., "Part (a)")
+- Use <p> for explanations and answers
+- Use <ul>/<ol> for lists
+- Use <strong> for important terms
+- Use <code> for formulas, code, or technical terms
+- Use proper spacing between sections
 
-OUTPUT: Clean HTML only.
-`,
+IMPORTANT RULES:
+1. Answer EVERY question completely
+2. Show step-by-step working for calculations
+3. Explain concepts clearly before solving
+4. Include formulas where applicable
+5. If a question references a figure/diagram, use the description provided to answer
+6. Make answers comprehensive but easy to understand
+7. Use proper academic language`,
 
-    quiz: (title, description, content, questionCount) => `
-You are a quiz generator.
-ASSIGNMENT TITLE: ${title}
-CONTENT:
-${content.substring(0, 20000)}
+        explain: `You are an expert academic tutor. Your task is to EXPLAIN the concepts in this assignment in a clear, educational way.
 
-INSTRUCTIONS:
-1. Generate EXACTLY ${questionCount} MCQs.
-2. Output ONLY VALID JSON.
-3. NO Markdown formatting.
+FORMAT YOUR RESPONSE AS CLEAN HTML:
+- Use <h2> for main concept headings
+- Use <h3> for sub-topics
+- Use <p> for explanations
+- Use <ul>/<ol> for key points
+- Use <strong> for important terms
+- Use <code> for formulas
+- Use <blockquote> for definitions or key takeaways
 
-REQUIRED JSON FORMAT:
+STRUCTURE YOUR EXPLANATION:
+1. **Overview**: Brief summary of what this assignment covers
+2. **Key Concepts**: Explain each major concept mentioned
+3. **Formulas & Equations**: List important formulas with explanations
+4. **Common Mistakes**: Things students often get wrong
+5. **Tips for Solving**: Practical advice for answering these questions
+
+Make it educational and easy to understand for a student who is learning these topics.`,
+
+        quiz: `You are creating a practice quiz based on assignment content.
+
+Return ONLY valid JSON in this exact format:
 {
-  "questions": [
+  "quiz": [
     {
-      "question": "Text",
-      "options": ["A", "B", "C", "D"],
-      "correctAnswer": 0
+      "id": 1,
+      "question": "Clear question text",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0,
+      "explanation": "Why this answer is correct"
     }
   ]
 }
-`,
 
-    flashcards: (title, description, content) => `
-You are a flashcard generator.
-ASSIGNMENT TITLE: ${title}
-CONTENT:
-${content.substring(0, 20000)}
+RULES:
+- Create 5-10 multiple choice questions
+- Cover key concepts from the assignment
+- Make questions progressively harder
+- Include calculation-based questions if applicable
+- Explanations should be educational`,
 
-INSTRUCTIONS:
-1. Extract 8-12 key terms.
-2. Output ONLY VALID JSON.
-3. NO Markdown formatting.
+        flashcards: `You are creating study flashcards based on assignment content.
 
-REQUIRED JSON FORMAT:
+Return ONLY valid JSON in this exact format:
 {
   "flashcards": [
     {
-      "front": "Term",
-      "back": "Definition"
+      "id": 1,
+      "front": "Term or question",
+      "back": "Definition or answer",
+      "category": "Topic category"
     }
   ]
 }
-`,
 
-    draft: (title, description, content) => `
-You are an expert solver.
-ASSIGNMENT TITLE: ${title}
-CONTENT:
-${content.substring(0, 25000)}
+RULES:
+- Create 10-15 flashcards
+- Include key terms, formulas, and concepts
+- Front should be concise, back should be comprehensive
+- Cover all major topics in the assignment`
+    };
 
-INSTRUCTIONS:
-1. Provide a detailed solution in clean HTML.
-2. Start with <h1>${title}</h1>.
-3. Use <ol> for steps, <pre> for code.
-4. NO Markdown blocks. Output RAW HTML.
-
-OUTPUT: Clean HTML solution.
-`
+    return prompts[mode] || prompts.draft;
 };
 
 /**
- * NEW: Content Validator
- * Uses a cheap model call to check if content is garbage.
- */
-const validateExtractedContent = async (text, apiKey) => {
-    // Hard fail for very short text
-    if (!text || text.trim().length < 50) {
-        return { isValid: false, reason: "Content is too short or empty." };
-    }
-
-    try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        // Use a fast model for validation
-        const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-        const model = genAI.getGenerativeModel({
-            model: modelName,
-            generationConfig: { responseMimeType: "application/json" }
-        });
-
-        const prompt = `
-        Analyze this text sample from an uploaded file.
-        Determine if it contains VALID educational content (questions, notes, code, book text) OR if it is INVALID (gibberish, "lorem ipsum", file metadata only, empty tables, or just prompts).
-
-        TEXT SAMPLE:
-        "${text.substring(0, 1000)}"
-
-        Respond with JSON:
-        { "isValid": boolean, "reason": "short explanation" }
-        `;
-
-        const result = await model.generateContent(prompt);
-        const response = JSON.parse(result.response.text());
-        return response;
-
-    } catch (error) {
-        console.warn("Validation check failed to run, assuming valid to be safe:", error);
-        return { isValid: true };
-    }
-};
-
-/**
- * Main Generation Function
+ * Generate Solutions using Structured JSON
  */
 export const generateSolution = async (assignmentId, userId, apiKey, mode = 'draft', questionCount = 5) => {
-    const validModes = ['explain', 'quiz', 'flashcards', 'draft'];
-    if (!validModes.includes(mode)) {
-        throw new Error(`Invalid mode: ${mode}`);
-    }
-
-    if (!apiKey) throw new Error("API Key is required");
-
-    const genAI = new GoogleGenerativeAI(apiKey);
     const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) throw new Error('Assignment not found');
+    const structuredData = assignment.extractedContent?.structuredData;
+    const extractedContent = assignment.extractedContent?.extractedContent || '';
 
-    const extractedText = assignment.extractedContent?.fullText || "";
-
-    // --- STEP 1: STRICT CONTENT VALIDATION ---
-    console.log(`[AI Service] Validating content for: ${assignment.title}`);
-
-    // Check 1: Length
-    if (extractedText.length < 50) {
-        throw new Error("Extracted content is too short to generate a solution. Please upload a clearer file.");
+    if (!structuredData && !extractedContent) {
+        throw new Error("Assignment content not extracted yet. Please open the assignment first.");
     }
 
-    // Check 2: Semantic Analysis (The Gatekeeper)
-    const validation = await validateExtractedContent(extractedText, apiKey);
+    const groq = new Groq({ apiKey });
+    const modelName = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    const systemPrompt = getSystemPrompt(mode, assignment.title);
 
-    if (!validation.isValid) {
-        const msg = `Content Validation Failed: ${validation.reason || "File does not contain valid study material."}`;
-        console.error(msg);
-        throw new Error(msg); // Stop here! Don't waste tokens on full generation.
+    // Build context from both structured data and raw extracted content
+    let contentContext = '';
+    
+    if (structuredData?.questions) {
+        contentContext += '\n=== QUESTIONS FROM ASSIGNMENT ===\n';
+        Object.entries(structuredData.questions).forEach(([key, q]) => {
+            contentContext += `\n${key.toUpperCase()}: ${q.question}\n`;
+            if (q.imageInfo) contentContext += `[Related Figure/Diagram: ${q.imageInfo}]\n`;
+        });
+    }
+    
+    if (extractedContent) {
+        contentContext += '\n=== FULL EXTRACTED CONTENT ===\n' + extractedContent;
     }
 
-    // --- STEP 2: GENERATION ---
-    const promptTemplate = PROMPT_TEMPLATES[mode];
-    const prompt = mode === 'quiz'
-        ? promptTemplate(assignment.title, assignment.description, extractedText, questionCount)
-        : promptTemplate(assignment.title, assignment.description, extractedText);
+    const userPrompt = `Assignment Title: "${assignment.title}"
 
-    try {
-        const modelName = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-        let modelConfig = { model: modelName };
+${contentContext}
 
-        // Force JSON structure for data modes
-        if (mode === 'quiz' || mode === 'flashcards') {
-            modelConfig.generationConfig = { responseMimeType: "application/json" };
-        }
+${mode === 'draft' ? 'Create a complete solution document answering ALL questions shown above.' : ''}
+${mode === 'explain' ? 'Explain all the key concepts covered in this assignment.' : ''}
+${mode === 'quiz' ? `Create ${questionCount} practice quiz questions based on this content.` : ''}
+${mode === 'flashcards' ? 'Create study flashcards for the key terms and concepts.' : ''}`;
 
-        const model = genAI.getGenerativeModel(modelConfig);
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let text = response.text();
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ];
 
-        // --- STEP 3: CLEANING & PARSING ---
-        if (mode === 'quiz' || mode === 'flashcards') {
-            // Use the robust cleaner
-            const parsed = cleanAndParseJSON(text);
+    const completion = await groq.chat.completions.create({
+        messages,
+        model: modelName,
+        temperature: mode === 'draft' || mode === 'explain' ? 0.3 : 0.5,
+        max_tokens: 8000
+    });
+    
+    const rawResponse = completion.choices[0]?.message?.content || '';
 
-            // Validate specific structures
-            if (mode === 'quiz' && (!parsed.questions || !Array.isArray(parsed.questions))) {
-                throw new Error("Invalid Quiz structure received from AI");
-            }
-            if (mode === 'flashcards' && (!parsed.flashcards || !Array.isArray(parsed.flashcards))) {
-                throw new Error("Invalid Flashcard structure received from AI");
-            }
-
-            text = JSON.stringify(parsed, null, 2);
+    let text;
+    if (mode === 'quiz' || mode === 'flashcards') {
+        // Accept either already-parsed object or string JSON from the model
+        if (typeof rawResponse === 'object') {
+            text = rawResponse;
         } else {
-            // Clean HTML
-            text = cleanHTML(text);
+            try {
+                text = cleanAndParseJSON(String(rawResponse));
+            } catch (e) {
+                // Fallbacks: try direct JSON.parse, then return error container
+                try {
+                    text = JSON.parse(String(rawResponse));
+                } catch (e2) {
+                    text = { error: 'Parsing failed', raw: String(rawResponse) };
+                }
+            }
         }
-
-        // --- STEP 4: SAVE ---
-        let solution = await Solution.findOne({ assignmentId: assignment._id });
-
-        if (solution) {
-            solution.mode = mode;
-            solution.content = text;
-            solution.version += 1;
-            await solution.save();
-        } else {
-            solution = await Solution.create({
-                assignmentId: assignment._id,
-                userId: userId,
-                mode: mode,
-                content: text
-            });
-        }
-
-        assignment.status = 'ready';
-        await assignment.save();
-
-        return solution;
-
-    } catch (error) {
-        console.error("Gemini Processing Error:", error);
-        throw new Error(`AI Generation Failed: ${error.message}`);
+    } else {
+        // For HTML/draft/explain modes ensure we return clean HTML string
+        if (typeof rawResponse === 'string') text = cleanHTML(rawResponse);
+        else text = cleanHTML(JSON.stringify(rawResponse));
     }
+
+    return await Solution.findOneAndUpdate(
+        { assignmentId, userId, mode },
+        { content: text, $inc: { version: 1 } },
+        { upsert: true, new: true }
+    );
 };
 
-// ... (Keep answerPDFQuestion and answerTextQuestion as they are, just ensure they check apiKey) ...
-export const answerPDFQuestion = async (pdfBuffer, question, apiKey) => { /* ... same as before ... */ };
-export const answerTextQuestion = async (textContext, question, apiKey) => { /* ... same as before ... */ };
+/**
+ * Chat Logic using JSON context
+ */
+export const answerTextQuestion = async (context, question, apiKey) => {
+    const groq = new Groq({ apiKey });
+    const modelName = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    
+    const systemPrompt = `You are an expert academic tutor. Answer the student's question based on the assignment context provided.
+
+RULES:
+1. Be clear and educational
+2. If the question is about solving a problem, show step-by-step working
+3. If relevant, mention which concepts from the assignment apply
+4. Use simple language but maintain academic accuracy
+5. Format your response with proper paragraphs and structure`;
+
+    const userPrompt = `Assignment Context:
+${context}
+
+Student's Question: ${question}
+
+Please provide a clear, helpful answer.`;
+    
+    const completion = await groq.chat.completions.create({
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ],
+        model: modelName,
+        temperature: 0.4,
+        max_tokens: 2000
+    });
+    
+    return completion.choices[0]?.message?.content || '';
+};
+
+/**
+ * Explain Concept - dedicated function for better concept explanations
+ */
+export const explainConcept = async (assignmentId, userId, apiKey, topic = null) => {
+    return await generateSolution(assignmentId, userId, apiKey, 'explain');
+};
+
+/**
+ * FIXED: submitSolution Export (Crucial for fixing your crash)
+ */
+export const submitSolution = async (solutionId, userId, editedContent) => {
+    return await Solution.findOneAndUpdate(
+        { _id: solutionId, userId },
+        { content: editedContent },
+        { new: true }
+    );
+};

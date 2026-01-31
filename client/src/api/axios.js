@@ -7,11 +7,11 @@ const api = axios.create({
 // ADD THIS INTERCEPTOR
 api.interceptors.request.use((config) => {
   // Check if user has saved a key in browser storage
-  const key = localStorage.getItem('gemini_api_key');
+  const key = localStorage.getItem('groq_api_key');
 
   if (key) {
     // Attach it to the specific header the backend expects
-    config.headers['x-gemini-api-key'] = key;
+    config.headers['x-groq-api-key'] = key;
   }
   return config;
 });

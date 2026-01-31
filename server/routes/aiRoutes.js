@@ -1,10 +1,12 @@
 import express from 'express';
-import { generateAiSolution, getSolution, chatWithPDF } from '../controllers/aiController.js';
+import { generateAiSolution, getSolution, chatWithAssignment, explainConceptHandler } from '../controllers/aiController.js';
 
 const router = express.Router();
 
 router.post('/generate', generateAiSolution);
-router.get('/solutions/:assignmentId', getSolution);
-router.post('/chat-pdf', chatWithPDF);
+router.post('/explain', explainConceptHandler);
+router.get('/solution/:assignmentId', getSolution);
+router.get('/solutions/:assignmentId', getSolution); // Alias for frontend compatibility
+router.post('/chat', chatWithAssignment);
 
 export default router;
