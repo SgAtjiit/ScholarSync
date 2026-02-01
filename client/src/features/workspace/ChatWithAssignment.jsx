@@ -292,24 +292,24 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
             )}
             
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 custom-scrollbar">
                 {messages.map((msg, idx) => (
                     <div
                         key={idx}
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user'
+                            className={`max-w-[90%] sm:max-w-[85%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 ${msg.role === 'user'
                                 ? 'bg-indigo-600 text-white'
                                 : 'bg-zinc-800 text-zinc-100 border border-white/5'
                                 }`}
                         >
                             {msg.role === 'ai' && (
-                                <div className="flex items-center gap-2 mb-2 text-indigo-400 text-xs font-medium">
-                                    <Sparkles size={12} /> AI Assistant
+                                <div className="flex items-center gap-2 mb-1 sm:mb-2 text-indigo-400 text-[10px] sm:text-xs font-medium">
+                                    <Sparkles size={10} className="sm:w-3 sm:h-3" /> AI
                                 </div>
                             )}
-                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                         </div>
                     </div>
                 ))}
@@ -317,11 +317,11 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
                 {/* Streaming message */}
                 {streamingMessage && (
                     <div className="flex justify-start">
-                        <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-zinc-800 text-zinc-100 border border-white/5">
-                            <div className="flex items-center gap-2 mb-2 text-indigo-400 text-xs font-medium">
-                                <Sparkles size={12} className="animate-pulse" /> AI Assistant
+                        <div className="max-w-[90%] sm:max-w-[85%] rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 bg-zinc-800 text-zinc-100 border border-white/5">
+                            <div className="flex items-center gap-2 mb-1 sm:mb-2 text-indigo-400 text-[10px] sm:text-xs font-medium">
+                                <Sparkles size={10} className="sm:w-3 sm:h-3 animate-pulse" /> AI
                             </div>
-                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingMessage}<span className="animate-pulse">▊</span></p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{streamingMessage}<span className="animate-pulse">▊</span></p>
                         </div>
                     </div>
                 )}
@@ -340,14 +340,14 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
 
             {/* Suggested Questions (show only when few messages) */}
             {messages.length <= 2 && !loading && (
-                <div className="px-4 pb-2">
-                    <p className="text-xs text-zinc-500 mb-2">Try asking:</p>
-                    <div className="flex flex-wrap gap-2">
+                <div className="px-3 sm:px-4 pb-2">
+                    <p className="text-[10px] sm:text-xs text-zinc-500 mb-2">Try asking:</p>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {suggestedQuestions.map((q, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => handleSuggestedClick(q)}
-                                className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-lg border border-white/5 transition-colors"
+                                className="text-[10px] sm:text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/5 transition-colors"
                             >
                                 {q}
                             </button>
@@ -357,31 +357,31 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
             )}
 
             {/* Input Area */}
-            <div className="border-t border-white/5 p-4">
+            <div className="border-t border-white/5 p-2 sm:p-4">
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        placeholder="Ask anything about this assignment..."
+                        placeholder="Ask anything..."
                         disabled={loading}
-                        className="flex-1 bg-zinc-800 text-white px-4 py-3 rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none disabled:opacity-50 placeholder-zinc-500"
+                        className="flex-1 bg-zinc-800 text-white text-sm px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl border border-white/5 focus:border-indigo-500 focus:outline-none disabled:opacity-50 placeholder-zinc-500"
                     />
                     {loading ? (
                         <button
                             onClick={stopStreaming}
-                            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl transition-colors flex items-center gap-2"
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl transition-colors flex items-center gap-2"
                         >
-                            <StopCircle size={18} />
+                            <StopCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
                         </button>
                     ) : (
                         <button
                             onClick={handleSend}
                             disabled={!input.trim()}
-                            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-6 py-3 rounded-xl transition-colors flex items-center gap-2"
+                            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl transition-colors flex items-center gap-2"
                         >
-                            <Send size={18} />
+                            <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
                         </button>
                     )}
                 </div>

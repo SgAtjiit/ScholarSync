@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScholarSync OG Image</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body>
+    <!-- 
+        This is a template for generating an OG image.
+        Open this file in a browser and take a screenshot at 1200x630 pixels.
+        Save as og-image.png in the public folder.
+    -->
+    <div style="width: 1200px; height: 630px;" class="bg-[#09090b] flex items-center justify-center relative overflow-hidden">
+        <!-- Background Gradient -->
+        <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/30 rounded-full blur-[120px] translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] -translate-x-1/2 translate-y-1/2"></div>
+        
+        <!-- Content -->
+        <div class="relative z-10 text-center px-20">
+            <!-- Logo -->
+            <div class="flex items-center justify-center gap-4 mb-8">
+                <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                        <path d="M5 3v4"/>
+                        <path d="M19 17v4"/>
+                        <path d="M3 5h4"/>
+                        <path d="M17 19h4"/>
+                    </svg>
+                </div>
+                <span class="text-white text-5xl font-bold tracking-tight">ScholarSync</span>
+            </div>
+            
+            <!-- Tagline -->
+            <h1 class="text-6xl font-extrabold text-white mb-6 leading-tight">
+                AI Classroom Manager
+            </h1>
+            
+            <p class="text-2xl text-zinc-400 max-w-3xl mx-auto leading-relaxed">
+                Master your Google Classroom assignments with AI-powered explanations, quizzes, flashcards, and smart solutions.
+            </p>
+            
+            <!-- Feature Pills -->
+            <div class="flex items-center justify-center gap-4 mt-10">
+                <span class="px-5 py-2.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-lg font-medium">AI Explanations</span>
+                <span class="px-5 py-2.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-lg font-medium">Smart Quizzes</span>
+                <span class="px-5 py-2.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-pink-300 text-lg font-medium">Flashcards</span>
+                <span class="px-5 py-2.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-lg font-medium">Solutions</span>
+            </div>
+        </div>
+        
+        <!-- URL -->
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-zinc-500 text-xl">
+            scholarsync.vercel.app
+        </div>
+    </div>
+</body>
+</html>

@@ -13,6 +13,7 @@ import QuizOptionsModal from "../components/common/QuizOptionsModal";
 import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout, RefreshCw } from "lucide-react";
 import toast from 'react-hot-toast';
 import Button from "../components/common/Button";
+import useSEO from "../hooks/useSEO";
 
 // Helper to parse error and extract rate limit info
 const parseErrorMessage = (err) => {
@@ -39,6 +40,11 @@ const Workspace = () => {
   const { assignmentId } = useParams();
   const { state } = useLocation();
   const { user } = useAuth();
+
+  useSEO({ 
+    title: 'AI Workspace', 
+    description: 'AI-powered workspace to explain, quiz, flashcard, and solve your Google Classroom assignments.' 
+  });
 
   const [assignment, setAssignment] = useState(state?.assignment || null);
   const [loading, setLoading] = useState(false);
@@ -218,14 +224,17 @@ const Workspace = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-8rem)]">
-      <div className="md:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
-        <GlassCard className="flex-shrink-0 flex flex-col gap-4" hoverEffect={false}>
+    <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] px-2 sm:px-0">
+      {/* Left Sidebar - Collapsible on mobile */}
+      <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6 lg:h-full lg:overflow-hidden">
+        <GlassCard className="flex-shrink-0 flex flex-col gap-3 sm:gap-4" hoverEffect={false}>
           <div>
-            <h1 className="text-lg font-bold text-white mb-2 line-clamp-2">{assignment?.title}</h1>
-            <p className="text-xs text-zinc-500">{assignment?.courseName}</p>
+            <h1 className="text-base sm:text-lg font-bold text-white mb-1 sm:mb-2 line-clamp-2">{assignment?.title}</h1>
+            <p className="text-[10px] sm:text-xs text-zinc-500">{assignment?.courseName}</p>
           </div>
-          <div className="flex flex-col gap-2">
+          
+          {/* Materials - Scrollable on mobile */}
+          <div className="flex flex-col gap-2 max-h-40 sm:max-h-none overflow-y-auto custom-scrollbar">
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Original Files</p>
             {assignment?.materials?.length > 0 ? (
               assignment.materials.map((m, i) => {
@@ -236,15 +245,15 @@ const Workspace = () => {
                     href={getMaterialLink(m)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-indigo-500/50 transition-all group"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-indigo-500/50 transition-all group"
                   >
-                    <div className="p-2 bg-zinc-900 rounded-lg text-indigo-400 group-hover:text-white transition-colors">
-                      <MatIcon size={16} />
+                    <div className="p-1.5 sm:p-2 bg-zinc-900 rounded-lg text-indigo-400 group-hover:text-white transition-colors">
+                      <MatIcon size={14} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-200 truncate">{getMaterialTitle(m)}</p>
-                      <p className="text-[10px] text-zinc-500 flex items-center gap-1">
-                        Open Drive Link <ExternalLink size={8} />
+                      <p className="text-[11px] sm:text-xs font-medium text-zinc-200 truncate">{getMaterialTitle(m)}</p>
+                      <p className="text-[9px] sm:text-[10px] text-zinc-500 flex items-center gap-1">
+                        Open <ExternalLink size={8} />
                       </p>
                     </div>
                   </a>
@@ -254,16 +263,15 @@ const Workspace = () => {
               <div className="text-xs text-zinc-500 italic p-2">No attachments found.</div>
             )}
 
-            {/* View on Classroom Link moved here, after the list */}
             {assignment?.alternateLink && (
               <a
                 href={assignment.alternateLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-xs font-medium transition-colors border border-indigo-500/20"
+                className="mt-1 w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-[10px] sm:text-xs font-medium transition-colors border border-indigo-500/20"
               >
                 <LinkIcon size={12} />
-                View on Google Classroom
+                View on Classroom
               </a>
             )}
           </div>
@@ -315,27 +323,31 @@ const Workspace = () => {
             </>
           )}
         </GlassCard>
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        
+        {/* AI Tools - Horizontal scroll on mobile, vertical on desktop */}
+        <div className="lg:flex-1 lg:overflow-y-auto custom-scrollbar">
           <AIAssistant activeMode={activeMode} onGenerate={handleGenerate} generating={generating} hasSolution={(mode) => !!solutions[mode]} />
         </div>
       </div>
 
-      <div className="md:col-span-8 h-full flex flex-col">
-        <div className="flex gap-2 mb-4 overflow-x-auto">
-          <button onClick={() => setActiveTab('ai')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-            <span className="flex items-center gap-2"><Sparkles size={16} />AI Response</span>
+      {/* Main Content Area */}
+      <div className="lg:col-span-8 flex-1 lg:h-full flex flex-col min-h-[60vh] lg:min-h-0">
+        {/* Tab Buttons - Scrollable */}
+        <div className="flex gap-2 mb-3 sm:mb-4 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-hide">
+          <button onClick={() => setActiveTab('ai')} className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm ${activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+            <span className="flex items-center gap-1.5 sm:gap-2"><Sparkles size={14} /><span className="hidden xs:inline">AI</span> Response</span>
           </button>
           {docFileId && (
-            <button onClick={() => setActiveTab('pdf')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-              <span className="flex items-center gap-2"><FileIcon size={16} />Document Viewer</span>
+            <button onClick={() => setActiveTab('pdf')} className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+              <span className="flex items-center gap-1.5 sm:gap-2"><FileIcon size={14} /><span className="hidden sm:inline">Document</span> Viewer</span>
             </button>
           )}
-          <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-            <span className="flex items-center gap-2"><MessageSquare size={16} />Chat with Assignment</span>
+          <button onClick={() => setActiveTab('chat')} className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+            <span className="flex items-center gap-1.5 sm:gap-2"><MessageSquare size={14} />Chat</span>
           </button>
         </div>
 
-        <div className="flex-1 bg-zinc-900/40 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+        <div className="flex-1 bg-zinc-900/40 backdrop-blur-sm border border-white/5 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl min-h-[50vh] lg:min-h-0">
           {activeTab === 'ai' && (
             <>
               {!currentSolution && !generating && (

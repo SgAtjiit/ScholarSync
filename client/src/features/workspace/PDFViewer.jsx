@@ -3,14 +3,14 @@ import { useState } from 'react';
 const PDFViewer = ({ pdfFileId }) => {
     if (!pdfFileId) {
         return (
-            <div className="flex items-center justify-center h-full text-zinc-500">
-                <p>No PDF available for this assignment</p>
+            <div className="flex items-center justify-center h-full text-zinc-500 p-4 text-center">
+                <p className="text-sm">No PDF available for this assignment</p>
             </div>
         );
     }
 
     return (
-        <div className="h-full w-full bg-zinc-900 rounded-xl overflow-hidden border border-white/5">
+        <div className="h-full w-full bg-zinc-900 rounded-lg sm:rounded-xl overflow-hidden border border-white/5 min-h-[300px] sm:min-h-[400px]">
             <iframe
                 src={`https://drive.google.com/file/d/${pdfFileId}/preview`}
                 className="w-full h-full"

@@ -83,11 +83,11 @@ const Quiz = ({ content, onRegenerate }) => {
                             <button
                                 key={oIdx}
                                 onClick={() => handleSelect(idx, oIdx)}
-                                className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between ${btnClass}`}
+                                className={`w-full text-left p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between text-sm sm:text-base ${btnClass}`}
                             >
                                 <span>{opt}</span>
-                                {isSubmitted && oIdx === q.correctAnswer && <CheckCircle size={18} />}
-                                {isSubmitted && answers[idx] === oIdx && !isCorrect && <XCircle size={18} />}
+                                {isSubmitted && oIdx === q.correctAnswer && <CheckCircle size={16} className="flex-shrink-0 ml-2" />}
+                                {isSubmitted && answers[idx] === oIdx && !isCorrect && <XCircle size={16} className="flex-shrink-0 ml-2" />}
                             </button>
                         );
                     })}
@@ -138,9 +138,9 @@ const Quiz = ({ content, onRegenerate }) => {
                             <button
                                 key={String(option)}
                                 onClick={() => handleSelect(idx, option)}
-                                className={`flex-1 p-4 rounded-xl border transition-all flex items-center justify-center gap-2 ${btnClass}`}
+                                className={`flex-1 p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all flex items-center justify-center gap-2 text-sm sm:text-base ${btnClass}`}
                             >
-                                {option ? <CheckCircle size={18} /> : <XCircle size={18} />}
+                                {option ? <CheckCircle size={16} /> : <XCircle size={16} />}
                                 <span className="font-medium">{option ? 'True' : 'False'}</span>
                             </button>
                         );
@@ -198,14 +198,14 @@ const Quiz = ({ content, onRegenerate }) => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto p-6 space-y-8">
-            <div className="flex justify-between items-center mb-6">
+        <div className="max-w-3xl mx-auto p-3 sm:p-6 space-y-4 sm:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
                 <div>
-                    <h2 className="text-2xl font-bold text-white">Knowledge Check</h2>
-                    <p className="text-sm text-zinc-500">{data.questions?.length || 0} questions</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">Knowledge Check</h2>
+                    <p className="text-xs sm:text-sm text-zinc-500">{data.questions?.length || 0} questions</p>
                 </div>
                 {onRegenerate && (
-                    <Button size="sm" variant="secondary" onClick={onRegenerate}>
+                    <Button size="sm" variant="secondary" onClick={onRegenerate} className="w-full sm:w-auto">
                         <RefreshCw size={14} className="mr-2" /> Regenerate
                     </Button>
                 )}
@@ -215,9 +215,9 @@ const Quiz = ({ content, onRegenerate }) => {
                 const questionType = q.type || 'mcq';
 
                 return (
-                    <div key={idx} className="bg-zinc-900/50 border border-white/5 p-6 rounded-2xl shadow-sm">
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                            <p className="text-lg font-medium text-white">
+                    <div key={idx} className="bg-zinc-900/50 border border-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
+                            <p className="text-base sm:text-lg font-medium text-white">
                                 <span className="text-indigo-500 font-bold mr-2">{idx + 1}.</span>{q.question}
                             </p>
                             {q.difficulty && getDifficultyBadge(q.difficulty)}

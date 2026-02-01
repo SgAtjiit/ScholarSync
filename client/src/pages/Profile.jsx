@@ -3,8 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import Button from "../components/common/Button";
 import { Eye, EyeOff, Key, User, Mail, Edit3 } from "lucide-react";
 import toast from 'react-hot-toast';
+import useSEO from "../hooks/useSEO";
 
 const Profile = () => {
+  useSEO({ 
+    title: 'Profile Settings', 
+    description: 'Manage your ScholarSync profile, API keys, and custom prompts.' 
+  });
+
   const { user } = useAuth();
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);

@@ -103,23 +103,23 @@ const MenuBar = ({ editor }) => {
   }, [editor]);
 
   return (
-    <div className="flex flex-wrap gap-1 p-2 bg-zinc-900 border-b border-white/5 items-center mb-2">
+    <div className="flex flex-wrap gap-1 p-1.5 sm:p-2 bg-zinc-900 border-b border-white/5 items-center mb-2 overflow-x-auto">
       {/* Bold / Italic */}
       <button
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
-        className={`p-1.5 rounded ${editor.isActive('bold') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`p-1 sm:p-1.5 rounded ${editor.isActive('bold') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Bold"
       >
-        <Bold size={16} />
+        <Bold size={14} className="sm:w-4 sm:h-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleItalic().run()}
         disabled={!editor.can().chain().focus().toggleItalic().run()}
-        className={`p-1.5 rounded ${editor.isActive('italic') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`p-1 sm:p-1.5 rounded ${editor.isActive('italic') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Italic"
       >
-        <Italic size={16} />
+        <Italic size={14} className="sm:w-4 sm:h-4" />
       </button>
 
       {/* ✨ ADDED: Color Picker */}
@@ -134,55 +134,55 @@ const MenuBar = ({ editor }) => {
         />
       </div>
 
-      <div className="w-px h-6 bg-zinc-800 mx-1 self-center" />
+      <div className="w-px h-5 sm:h-6 bg-zinc-800 mx-0.5 sm:mx-1 self-center hidden sm:block" />
 
       {/* Lists */}
       <button
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-1.5 rounded ${editor.isActive('bulletList') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`p-1 sm:p-1.5 rounded ${editor.isActive('bulletList') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Bullet List"
       >
-        <List size={16} />
+        <List size={14} className="sm:w-4 sm:h-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        className={`p-1.5 rounded ${editor.isActive('orderedList') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`p-1 sm:p-1.5 rounded ${editor.isActive('orderedList') ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Ordered List"
       >
-        <ListOrdered size={16} />
+        <ListOrdered size={14} className="sm:w-4 sm:h-4" />
       </button>
 
-      <div className="w-px h-6 bg-zinc-800 mx-1 self-center" />
+      <div className="w-px h-5 sm:h-6 bg-zinc-800 mx-0.5 sm:mx-1 self-center hidden sm:block" />
 
-      {/* Alignment */}
+      {/* Alignment - hide on mobile */}
       <button
         onClick={() => editor.chain().focus().setTextAlign('left').run()}
-        className={`p-1.5 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`hidden sm:block p-1 sm:p-1.5 rounded ${editor.isActive({ textAlign: 'left' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Align Left"
       >
-        <AlignLeft size={16} />
+        <AlignLeft size={14} className="sm:w-4 sm:h-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().setTextAlign('center').run()}
-        className={`p-1.5 rounded ${editor.isActive({ textAlign: 'center' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`hidden sm:block p-1 sm:p-1.5 rounded ${editor.isActive({ textAlign: 'center' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Align Center"
       >
-        <AlignCenter size={16} />
+        <AlignCenter size={14} className="sm:w-4 sm:h-4" />
       </button>
       <button
         onClick={() => editor.chain().focus().setTextAlign('right').run()}
-        className={`p-1.5 rounded ${editor.isActive({ textAlign: 'right' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+        className={`hidden sm:block p-1 sm:p-1.5 rounded ${editor.isActive({ textAlign: 'right' }) ? 'bg-indigo-500 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
         title="Align Right"
       >
-        <AlignRight size={16} />
+        <AlignRight size={14} className="sm:w-4 sm:h-4" />
       </button>
 
-      <div className="w-px h-6 bg-zinc-800 mx-1 self-center" />
+      <div className="w-px h-5 sm:h-6 bg-zinc-800 mx-0.5 sm:mx-1 self-center hidden sm:block" />
 
-      {/* Font & Size */}
+      {/* Font & Size - hide on very small screens */}
       <select
         onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
-        className="bg-zinc-800 text-zinc-300 text-xs rounded p-1.5 border border-zinc-700 outline-none focus:border-indigo-500 w-20"
+        className="hidden sm:block bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs rounded p-1 sm:p-1.5 border border-zinc-700 outline-none focus:border-indigo-500 w-16 sm:w-20"
         value={editor.getAttributes('textStyle').fontFamily || ''}
       >
         <option value="" disabled>Font</option>
@@ -194,7 +194,7 @@ const MenuBar = ({ editor }) => {
 
       <select
         onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
-        className="bg-zinc-800 text-zinc-300 text-xs rounded p-1.5 border border-zinc-700 outline-none focus:border-indigo-500 w-16 ml-1"
+        className="hidden sm:block bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs rounded p-1 sm:p-1.5 border border-zinc-700 outline-none focus:border-indigo-500 w-12 sm:w-16 ml-0.5 sm:ml-1"
         value={editor.getAttributes('textStyle').fontSize || ''}
       >
         <option value="" disabled>Size</option>
@@ -206,15 +206,15 @@ const MenuBar = ({ editor }) => {
         <option value="30px">30</option>
       </select>
 
-      <div className="w-px h-6 bg-zinc-800 mx-1 self-center" />
+      <div className="w-px h-5 sm:h-6 bg-zinc-800 mx-0.5 sm:mx-1 self-center hidden sm:block" />
 
       {/* ✨ ADDED: Image Button */}
       <button
         onClick={addImage}
-        className="p-1.5 rounded text-zinc-400 hover:bg-zinc-800"
+        className="p-1 sm:p-1.5 rounded text-zinc-400 hover:bg-zinc-800"
         title="Insert Image"
       >
-        <ImageIcon size={16} />
+        <ImageIcon size={14} className="sm:w-4 sm:h-4" />
       </button>
     </div>
   );
@@ -346,16 +346,17 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
 
   return (
     <div className="flex flex-col h-full bg-zinc-900/30">
-      <div className="flex justify-between items-center p-4 border-b border-white/5 bg-zinc-900/50">
-        <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Editor</h2>
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-2 sm:p-4 border-b border-white/5 bg-zinc-900/50">
+        <h2 className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">Editor</h2>
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
           {onRegenerate && (
             <Button
               onClick={onRegenerate}
               size="sm"
               variant="secondary"
+              className="text-[10px] sm:text-xs px-2 sm:px-3"
             >
-              <RefreshCw size={14} className="mr-1" /> Regenerate
+              <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px] mr-1" /> <span className="hidden xs:inline">Regenerate</span><span className="xs:hidden">Regen</span>
             </Button>
           )}
           <Button
@@ -363,9 +364,9 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
             loading={openingDocs}
             size="sm"
             variant="secondary"
-            className="bg-blue-600 hover:bg-blue-500 text-white"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs px-2 sm:px-3"
           >
-            <FileText size={14} className="mr-1" /> {googleDocId ? 'Open Docs' : 'Edit in Docs'}
+            <FileText size={12} className="sm:w-[14px] sm:h-[14px] mr-1" /> <span className="hidden sm:inline">{googleDocId ? 'Open Docs' : 'Edit in Docs'}</span><span className="sm:hidden">Docs</span>
           </Button>
           {googleDocId && (
             <Button
@@ -373,9 +374,9 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
               loading={syncing}
               size="sm"
               variant="secondary"
-              className="bg-purple-600 hover:bg-purple-500 text-white"
+              className="bg-purple-600 hover:bg-purple-500 text-white text-[10px] sm:text-xs px-2 sm:px-3"
             >
-              <Download size={14} className="mr-1" /> Sync from Docs
+              <Download size={12} className="sm:w-[14px] sm:h-[14px] mr-1" /> <span className="hidden sm:inline">Sync from Docs</span><span className="sm:hidden">Sync</span>
             </Button>
           )}
           <Button
@@ -383,9 +384,9 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
             loading={submitting}
             size="sm"
             variant="primary"
-            className="bg-green-600 hover:bg-green-500 text-white"
+            className="bg-green-600 hover:bg-green-500 text-white text-[10px] sm:text-xs px-2 sm:px-3"
           >
-            <UploadCloud size={16} /> Submit to Classroom
+            <UploadCloud size={12} className="sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Submit to Classroom</span><span className="sm:hidden">Submit</span>
           </Button>
         </div>
       </div>

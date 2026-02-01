@@ -1,20 +1,23 @@
 import { useNavigate } from "react-router-dom";
-import { Sparkles, ArrowLeft, FileText, CheckCircle, AlertTriangle, Scale, Ban, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle, AlertTriangle, Scale, Ban, RefreshCw } from "lucide-react";
 import Footer from "../components/layout/Footer";
+import useSEO from "../hooks/useSEO";
 
 const TermsOfService = () => {
     const navigate = useNavigate();
+    useSEO({ 
+        title: 'Terms of Service', 
+        description: 'ScholarSync Terms of Service - Read our terms and conditions for using the AI classroom manager.' 
+    });
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden selection:bg-indigo-500/30">
+        <main className="min-h-screen bg-[#09090b] text-white overflow-x-hidden selection:bg-indigo-500/30">
 
             {/* Navbar */}
             <nav className="fixed top-0 w-full z-50 bg-zinc-900/80 backdrop-blur-lg border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div onClick={() => navigate('/')} className="flex items-center gap-2 font-bold text-xl tracking-tight cursor-pointer hover:opacity-80 transition-opacity">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                            <Sparkles size={16} className="text-white" />
-                        </div>
+                        <img src="/logo.png" alt="ScholarSync Logo" className="w-8 h-8 rounded-lg" />
                         ScholarSync
                     </div>
                     <button
@@ -28,7 +31,7 @@ const TermsOfService = () => {
             </nav>
 
             {/* Content */}
-            <main className="pt-28 pb-20 px-6">
+            <section className="pt-28 pb-20 px-6">
                 {/* Background Gradients */}
                 <div className="absolute top-20 right-1/4 w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[120px] -z-10" />
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-indigo-600/5 rounded-full blur-[100px] -z-10" />
@@ -149,10 +152,10 @@ const TermsOfService = () => {
                         </div>
                     </div>
                 </div>
-            </main>
+            </section>
 
             <Footer />
-        </div>
+        </main>
     );
 };
 

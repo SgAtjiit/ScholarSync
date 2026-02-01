@@ -18,9 +18,42 @@ export const getAllCourses = async (req, res) => {
 export const getAssignments = async (req, res) => {
     try {
         const { userId } = req.params;
-        const assignments = await Assignment.find({ userId }).sort({ createdAt: -1 });
+        const { mode, courseId } = req.query;
+        
+        // Build query based on filter mode
+        let query = { userId };
+        
+        if (mode === 'all') {
+            // Show ALL assignments - no filter
+        } else if (mode === 'assigned') {
+            // Show assignments that are NOT submitted (pending)
+            query.status = { $nin: ['submitted'] };
+        } else if (mode === 'submitted') {
+            // Show only submitted assignments
+            query.status = 'submitted';
+        } else if (mode === 'missing') {
+            // Show assignments that are past due AND not submitted
+            query.$and = [
+                { status: { $nin: ['submitted'] } },
+                {
+                    $or: [
+                        { status: 'missing' },
+                        { dueDate: { $lt: new Date(), $ne: null } }
+                    ]
+                }
+            ];
+        } else if (mode === 'byCourse' && courseId) {
+            // Filter by specific course (courseId is the Google Course ID)
+            query.courseId = courseId;
+        }
+        // If no mode specified, return all assignments
+        
+        const assignments = await Assignment.find(query).sort({ createdAt: -1 });
         res.json(assignments);
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) { 
+        console.error('Get assignments error:', error);
+        res.status(500).json({ error: error.message }); 
+    }
 };
 
 export const triggerScan = async (req, res) => {
