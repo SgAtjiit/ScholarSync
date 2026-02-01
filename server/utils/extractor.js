@@ -9,6 +9,23 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
+ * Clean text from encoding artifacts
+ */
+const cleanText = (text) => {
+    if (!text) return '';
+    return text
+        // Remove control characters
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        // Remove common OCR artifacts
+        .replace(/;Ç[0-9A-Za-z]+/g, '')
+        .replace(/[†‡•·]/g, ' ')
+        // Clean up multiple spaces and newlines
+        .replace(/\s+/g, ' ')
+        .replace(/\n\s*\n\s*\n/g, '\n\n')
+        .trim();
+};
+
+/**
  * Downloads file from Google Drive as a buffer.
  */
 const downloadFile = async (fileId, accessToken, fileName = 'Unknown') => {
@@ -71,35 +88,30 @@ const getPdfPageImages = async (fileBuffer, title) => {
  * This includes ALL text + detailed descriptions of ALL images/diagrams
  */
 const extractPageContent = async (groq, visionModel, pageImage, fileName, pageNum) => {
-    const prompt = `You are extracting content from page ${pageNum} of "${fileName}".
+    const prompt = `Extract ALL content from page ${pageNum} of "${fileName}".
 
-YOUR TASK: Create a COMPLETE textual representation of this page. Someone reading your output should be able to understand EVERYTHING on this page without seeing the original.
+INSTRUCTIONS:
+1. Extract ALL text EXACTLY as written - questions, instructions, paragraphs
+2. Preserve numbering format: "1.", "Q1", "(a)", "(i)" etc.
+3. For mathematical expressions, write them clearly: 
+   - Subscripts: use _ (e.g., R_1, V_out)
+   - Superscripts: use ^ (e.g., x^2, 10^3)
+   - Fractions: use / (e.g., 1/2, V/R)
+4. For EVERY diagram, figure, circuit, graph or image write:
+   [FIGURE: <detailed description including all labels, values, connections>]
+5. For tables, recreate the structure clearly
 
-RULES:
-1. Extract ALL text exactly as written (questions, instructions, paragraphs, etc.)
-2. For EVERY image, diagram, figure, chart, or visual element:
-   - Write "[IMAGE: detailed description]" or "[FIGURE X: detailed description]"
-   - Describe what the image shows in enough detail that someone could recreate it or answer questions about it
-   - Include all labels, values, measurements, arrows, and relationships shown
-3. Preserve the structure (numbered questions, bullet points, etc.)
-4. If there's a table, recreate it in text format
-5. Include headers, footers, page numbers if visible
+OUTPUT FORMAT - be structured:
 
-EXAMPLE OUTPUT FORMAT:
----
-Question 1: What is the process shown in the figure below?
+Question 1: <exact question text>
+[FIGURE: <description if any>]
+(a) <sub-question text>
+(b) <sub-question text>
 
-[FIGURE 1: A flowchart showing the water cycle. Arrows connect: Sun → Evaporation from ocean → Cloud formation → Precipitation (rain) → Rivers/groundwater → Ocean. Labels show "Solar energy", "Water vapor rising", "Condensation", "Rainfall", and "Runoff".]
+Question 2: <exact question text>
+...
 
-Question 2: Calculate the current in the circuit shown.
-
-[CIRCUIT DIAGRAM: A simple series circuit with a 12V battery connected to two resistors. R1 = 4Ω and R2 = 8Ω are connected in series. An ammeter is shown between the battery and R1.]
-
-(a) Find the total resistance
-(b) Calculate the current using Ohm's law
----
-
-Now extract ALL content from this page:`;
+DO NOT add any commentary. Just extract the content as it appears.`;
 
     try {
         const response = await groq.chat.completions.create({
@@ -112,10 +124,12 @@ Now extract ALL content from this page:`;
             }],
             model: visionModel,
             temperature: 0.1,
-            max_tokens: 3000
+            max_tokens: 4000
         });
 
-        const content = response.choices[0]?.message?.content || '';
+        let content = response.choices[0]?.message?.content || '';
+        // Clean the content
+        content = cleanText(content);
         console.log(`Extracted content from ${fileName} page ${pageNum}: ${content.length} chars`);
         return content;
     } catch (err) {

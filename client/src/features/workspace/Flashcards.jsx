@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, RefreshCw } from 'lucide-react';
 import Button from '../../components/common/Button';
 import toast from 'react-hot-toast'; // ✨ ADDED
 
-const Flashcards = ({ content }) => {
+const Flashcards = ({ content, onRegenerate }) => {
   let data = { flashcards: [] };
   try {
     data = typeof content === 'string' ? JSON.parse(content) : content;
@@ -23,9 +23,16 @@ const Flashcards = ({ content }) => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-white">Study Flashcards</h2>
-        <Button size="sm" variant="secondary" onClick={() => setFlipped({})}>
-          <RefreshCcw size={14} /> Reset
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setFlipped({})}>
+            <RefreshCcw size={14} className="mr-1" /> Reset
+          </Button>
+          {onRegenerate && (
+            <Button size="sm" variant="secondary" onClick={onRegenerate}>
+              <RefreshCw size={14} className="mr-1" /> Regenerate
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

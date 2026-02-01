@@ -8,9 +8,32 @@ import Editor from "../features/workspace/Editor";
 import Flashcards from "../features/workspace/Flashcards";
 import Quiz from "../features/workspace/Quiz";
 import PDFViewer from "../features/workspace/PDFViewer";
-import ChatWithPDF from "../features/workspace/ChatWithPDF";
-import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout } from "lucide-react";
+import ChatWithAssignment from "../features/workspace/ChatWithAssignment";
+import QuizOptionsModal from "../components/common/QuizOptionsModal";
+import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout, RefreshCw } from "lucide-react";
 import toast from 'react-hot-toast';
+import Button from "../components/common/Button";
+
+// Helper to parse error and extract rate limit info
+const parseErrorMessage = (err) => {
+  const errorText = err.response?.data?.error || err.message || '';
+  
+  // Check for rate limit error
+  if (err.response?.status === 429 || errorText.includes('rate_limit') || errorText.includes('Rate limit')) {
+    // Extract wait time if available
+    const retryMatch = errorText.match(/try again in (\d+m?\d*\.?\d*s?)/i);
+    const waitTime = retryMatch ? retryMatch[1] : '5 minutes';
+    return { isRateLimit: true, message: `API rate limit exceeded. Please wait ${waitTime} and try again.` };
+  }
+  
+  // Check for auth error
+  if (err.response?.status === 401) {
+    return { isRateLimit: false, message: 'Authentication failed. Please check your API Key.' };
+  }
+  
+  // Generic error
+  return { isRateLimit: false, message: 'An error occurred. Please try again.' };
+};
 
 const Workspace = () => {
   const { assignmentId } = useParams();
@@ -23,6 +46,9 @@ const Workspace = () => {
   const [solutions, setSolutions] = useState({});
   const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('ai');
+  const [selectedDocId, setSelectedDocId] = useState(null);
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
 
   const getMaterialLink = (m) => {
     if (m.driveFile) return m.driveFile.driveFile?.alternateLink || m.driveFile.alternateLink;
@@ -47,6 +73,21 @@ const Workspace = () => {
     return FileText;
   };
 
+  // Get all document materials (PDFs, DOCX, etc.)
+  const getDocumentMaterials = (materials) => {
+    return materials?.filter(m => {
+      const file = m.driveFile?.driveFile || m.driveFile;
+      const mimeType = file?.mimeType || '';
+      const title = file?.title || '';
+      return mimeType.includes('pdf') ||
+        mimeType.includes('document') ||
+        mimeType.includes('word') ||
+        title.toLowerCase().endsWith('.pdf') ||
+        title.toLowerCase().endsWith('.docx') ||
+        title.toLowerCase().endsWith('.doc');
+    }) || [];
+  };
+
   const docMaterial = assignment?.materials?.find(m => {
     const file = m.driveFile?.driveFile || m.driveFile;
     const mimeType = file?.mimeType || '';
@@ -59,6 +100,15 @@ const Workspace = () => {
       title.toLowerCase().endsWith('.doc');
   });
   const docFileId = docMaterial?.driveFile?.driveFile?.id || docMaterial?.driveFile?.id || null;
+  
+  // Get all document materials
+  const allDocMaterials = getDocumentMaterials(assignment?.materials);
+  const hasMultipleDocs = allDocMaterials.length > 1;
+  
+  // Set selected doc on first load
+  if (!selectedDocId && allDocMaterials.length > 0) {
+    setSelectedDocId(allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id);
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -89,62 +139,72 @@ const Workspace = () => {
       } catch (err) {
         console.error("Extraction error:", err);
         setLoading(false);
-
-        // Parse and display specific error messages
-        const errorMessage = err.response?.data?.error || "Failed to extract assignment content.";
-        const failedFiles = err.response?.data?.failedFiles || [];
-
-        if (failedFiles.length > 0) {
-          // Show detailed error for external organization files
-          toast.error(errorMessage, { duration: 6000 });
-        } else {
-          toast.error(errorMessage);
-        }
+        const { message } = parseErrorMessage(err);
+        toast.error(message);
       }
     };
     if (user) init();
   }, [assignmentId, user]);
 
 
-  const handleGenerate = async (mode) => {
+  const handleGenerate = async (mode, forceRegenerate = false, quizOptions = null) => {
     setActiveMode(mode);
-    if (solutions[mode]) return;
+    
+    // If multiple documents exist, show selector
+    if (hasMultipleDocs && !selectedDocId) {
+      toast.error("Please select a document first from the Document Viewer tab");
+      setActiveTab('pdf');
+      return;
+    }
+
+    if (solutions[mode] && !forceRegenerate) return;
 
     if (!localStorage.getItem('groq_api_key')) {
       toast.error("You need to set your Groq API Key in Settings first!");
       return;
     }
 
-    setGenerating(true);
-    const toastId = toast.loading("Generating with AI...");
-
-    let qCount = 5;
-    if (mode === 'quiz') {
-      const input = prompt("How many questions?", "5");
-      if (!input) {
-        setGenerating(false);
-        toast.dismiss(toastId);
-        return;
-      }
-      qCount = parseInt(input);
+    // For quiz mode, show the options modal instead of alert
+    if (mode === 'quiz' && !quizOptions) {
+      setPendingQuizRegenerate(forceRegenerate);
+      setShowQuizModal(true);
+      return;
     }
+
+    setGenerating(true);
+    const toastId = toast.loading(forceRegenerate ? "Regenerating with AI..." : "Generating with AI...");
 
     try {
       const res = await api.post('/ai/generate', {
-        assignmentId, userId: user._id, mode, questionCount: qCount
+        assignmentId, 
+        userId: user._id, 
+        mode, 
+        questionCount: quizOptions?.questionCount || 5,
+        difficulty: quizOptions?.difficulty || 'medium',
+        questionType: quizOptions?.questionType || 'mixed',
+        selectedDocId
       });
       setSolutions(prev => ({ ...prev, [mode]: res.data }));
-      toast.success("Content generated successfully!", { id: toastId });
+      toast.success(forceRegenerate ? "Content regenerated!" : "Content generated successfully!", { id: toastId });
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        toast.error("Authentication Failed: Check API Key", { id: toastId });
-      } else {
-        toast.error(err.response?.data?.error || "Generation failed", { id: toastId });
-      }
+      console.error('Generation error:', err);
+      const { message } = parseErrorMessage(err);
+      toast.error(message, { id: toastId });
     } finally {
       setGenerating(false);
     }
   };
+
+  const handleRegenerate = () => {
+    handleGenerate(activeMode, true);
+  };
+
+  // Callback for quiz modal
+  const handleQuizGenerate = (options) => {
+    setShowQuizModal(false);
+    handleGenerate('quiz', pendingQuizRegenerate, options);
+  };
+
   const currentSolution = solutions[activeMode];
 
   if (loading) {
@@ -212,6 +272,48 @@ const Workspace = () => {
           <div className="text-xs text-zinc-500 max-h-32 overflow-y-auto custom-scrollbar">
             {assignment?.description || "No text description."}
           </div>
+
+          {/* Document Selector for Multiple PDFs */}
+          {hasMultipleDocs && (
+            <>
+              <div className="mt-4 h-px bg-zinc-800 w-full"></div>
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                  📄 Select Document for AI
+                </p>
+                <p className="text-[9px] text-zinc-500 italic">
+                  Found {allDocMaterials.length} documents. Choose which one to use for generating solutions:
+                </p>
+                <div className="flex flex-col gap-2">
+                  {allDocMaterials.map((doc, idx) => {
+                    const docId = doc.driveFile?.driveFile?.id || doc.driveFile?.id;
+                    const docTitle = doc.driveFile?.driveFile?.title || doc.driveFile?.title || `Document ${idx + 1}`;
+                    const isSelected = selectedDocId === docId;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedDocId(docId);
+                          setActiveTab('pdf');
+                          toast.success(`Selected: ${docTitle}`);
+                        }}
+                        className={`text-left p-2 rounded-lg text-xs transition-all ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border border-indigo-400'
+                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:border-indigo-500/50'
+                        }`}
+                      >
+                        <span className="font-medium">{isSelected ? '✓ ' : ''}{docTitle}</span>
+                        <p className="text-[8px] text-zinc-400 mt-1">
+                          {isSelected ? 'Currently selected' : 'Click to select & view'}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </GlassCard>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <AIAssistant activeMode={activeMode} onGenerate={handleGenerate} generating={generating} hasSolution={(mode) => !!solutions[mode]} />
@@ -224,15 +326,13 @@ const Workspace = () => {
             <span className="flex items-center gap-2"><Sparkles size={16} />AI Response</span>
           </button>
           {docFileId && (
-            <>
-              <button onClick={() => setActiveTab('pdf')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-                <span className="flex items-center gap-2"><FileIcon size={16} />Document Viewer</span>
-              </button>
-              <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
-                <span className="flex items-center gap-2"><MessageSquare size={16} />Chat with Document</span>
-              </button>
-            </>
+            <button onClick={() => setActiveTab('pdf')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'pdf' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+              <span className="flex items-center gap-2"><FileIcon size={16} />Document Viewer</span>
+            </button>
           )}
+          <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === 'chat' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
+            <span className="flex items-center gap-2"><MessageSquare size={16} />Chat with Assignment</span>
+          </button>
         </div>
 
         <div className="flex-1 bg-zinc-900/40 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
@@ -253,18 +353,35 @@ const Workspace = () => {
               )}
               {currentSolution && !generating && (
                 <>
-                  {activeMode === 'quiz' && (<div className="h-full overflow-y-auto custom-scrollbar"><Quiz content={currentSolution.content} /></div>)}
-                  {activeMode === 'flashcards' && (<div className="h-full overflow-y-auto custom-scrollbar"><Flashcards content={currentSolution.content} /></div>)}
-                  {activeMode === 'explain' && (<div className="h-full overflow-y-auto custom-scrollbar p-8"><div className="prose prose-invert prose-indigo max-w-none" dangerouslySetInnerHTML={{ __html: currentSolution.content }} /></div>)}
-                  {activeMode === 'draft' && (<Editor initialContent={currentSolution.editedContent || currentSolution.content} solutionId={currentSolution._id} />)}
+                  {activeMode === 'quiz' && (<div className="h-full overflow-y-auto custom-scrollbar"><Quiz content={currentSolution.content} onRegenerate={handleRegenerate} /></div>)}
+                  {activeMode === 'flashcards' && (<div className="h-full overflow-y-auto custom-scrollbar"><Flashcards content={currentSolution.content} onRegenerate={handleRegenerate} /></div>)}
+                  {activeMode === 'explain' && (
+                    <div className="h-full overflow-y-auto custom-scrollbar p-8">
+                      <div className="flex justify-end mb-4">
+                        <Button size="sm" variant="secondary" onClick={handleRegenerate}>
+                          <RefreshCw size={14} className="mr-2" /> Regenerate
+                        </Button>
+                      </div>
+                      <div className="prose prose-invert prose-indigo max-w-none" dangerouslySetInnerHTML={{ __html: currentSolution.content }} />
+                    </div>
+                  )}
+                  {activeMode === 'draft' && (<Editor initialContent={currentSolution.editedContent || currentSolution.content} solutionId={currentSolution._id} onRegenerate={handleRegenerate} />)}
                 </>
               )}
             </>
           )}
           {activeTab === 'pdf' && <PDFViewer pdfFileId={docFileId} />}
-          {activeTab === 'chat' && <ChatWithPDF pdfFileId={docFileId} />}
+          {activeTab === 'chat' && <ChatWithAssignment assignmentId={assignmentId} assignmentTitle={assignment?.title} />}
         </div>
       </div>
+
+      {/* Quiz Options Modal */}
+      <QuizOptionsModal
+        isOpen={showQuizModal}
+        onClose={() => setShowQuizModal(false)}
+        onGenerate={handleQuizGenerate}
+        isGenerating={generating}
+      />
     </div>
   );
 };
