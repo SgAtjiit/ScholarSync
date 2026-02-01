@@ -48,7 +48,7 @@ const Landing = () => {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 sm:h-2 w-1.5 sm:w-2 bg-indigo-500"></span>
                         </span>
-                        Now with Gemini 2.5 Flash Support
+                        Powered by LLaMA 3.3 70B via Groq
                     </div>
 
                     <h1 id="hero-heading" className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400 leading-tight">
@@ -130,7 +130,7 @@ const Landing = () => {
                             </div>
                             <h2 id="byok-heading" className="text-xl sm:text-3xl font-bold">Bring Your Own API Key - Privacy First</h2>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-                                We believe in privacy and control for our AI classroom manager. Bring your own Gemini API key to unlock unlimited AI generations. Your key is stored locally on your device and never touches our servers.
+                                We believe in privacy and control for our AI classroom manager. Bring your own Groq API key to unlock unlimited AI generations. Your key is stored locally on your device and sent per-request - never stored on our servers.
                             </p>
                             <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-zinc-300">
                                 <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" /> Secure Local Storage - 100% Private</li>

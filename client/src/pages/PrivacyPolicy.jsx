@@ -131,7 +131,7 @@ const PrivacyPolicy = () => {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google Gemini API:</strong> To power AI features</span>
+                                    <span><strong className="text-zinc-300">Groq API:</strong> To power AI features (using your own API key)</span>
                                 </li>
                             </ul>
                         </PolicySection>
