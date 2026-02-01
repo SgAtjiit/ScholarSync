@@ -15,10 +15,20 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If user exists (login successful), go to dashboard
+    // If user exists (login successful), check if API key setup is needed
     if (user) {
-      navigate('/dashboard');
-      toast.success(`Welcome back, ${user.name}!`); // ✨ ADDED: Welcome Toast
+      const hasApiKey = localStorage.getItem('groq_api_key');
+      const hasCompletedSetup = localStorage.getItem('hasCompletedAPIKeySetup');
+      
+      if (!hasApiKey && !hasCompletedSetup) {
+        // First time login - go to API key setup
+        toast.success(`Welcome, ${user.name}! Let's set up your account.`);
+        navigate('/api-key-setup');
+      } else {
+        // Returning user or already set up - go to dashboard
+        toast.success(`Welcome back, ${user.name}!`);
+        navigate('/dashboard');
+      }
     }
   }, [user, navigate]);
 

@@ -3,10 +3,10 @@ import Button from "../../components/common/Button";
 
 const AIAssistant = ({ activeMode, onGenerate, generating, hasSolution }) => {
   const tools = [
-    { id: 'explain', label: 'Explain', icon: Brain, desc: "Understand the core topics" },
-    { id: 'quiz', label: 'Quiz', icon: Layers, desc: "Test your knowledge" },
-    { id: 'flashcards', label: 'Cards', icon: Sparkles, desc: "Memorize key terms" },
-    { id: 'draft', label: 'Draft', icon: PenTool, desc: "Create a submission draft" },
+    { id: 'explain', label: 'Explain', icon: Brain, desc: "📚 Understand core topics", tooltip: "Get detailed explanations of all concepts in this assignment" },
+    { id: 'quiz', label: 'Quiz', icon: Layers, desc: "🎯 Test your knowledge", tooltip: "Practice with auto-generated quiz questions" },
+    { id: 'flashcards', label: 'Cards', icon: Sparkles, desc: "📖 Memorize key terms", tooltip: "Create interactive study flashcards" },
+    { id: 'draft', label: 'Draft', icon: PenTool, desc: "✍️ Create submission", tooltip: "Write and edit your assignment solution" },
   ];
 
   return (
@@ -24,6 +24,7 @@ const AIAssistant = ({ activeMode, onGenerate, generating, hasSolution }) => {
               key={tool.id}
               onClick={() => onGenerate(tool.id)}
               disabled={generating}
+              title={tool.tooltip}
               className={`flex-shrink-0 lg:flex-shrink flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl text-left transition-all border min-w-[100px] lg:min-w-0 lg:w-full ${isActive
                   ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/20'
                   : 'bg-zinc-900/40 border-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'

@@ -10,6 +10,7 @@ import Quiz from "../features/workspace/Quiz";
 import PDFViewer from "../features/workspace/PDFViewer";
 import ChatWithAssignment from "../features/workspace/ChatWithAssignment";
 import QuizOptionsModal from "../components/common/QuizOptionsModal";
+import WorkspaceGuide from "../components/workspace/WorkspaceGuide";
 import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout, RefreshCw } from "lucide-react";
 import toast from 'react-hot-toast';
 import Button from "../components/common/Button";
@@ -227,72 +228,74 @@ const Workspace = () => {
     <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] px-2 sm:px-0">
       {/* Left Sidebar - Collapsible on mobile */}
       <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6 lg:h-full lg:overflow-hidden">
-        <GlassCard className="flex-shrink-0 flex flex-col gap-3 sm:gap-4" hoverEffect={false}>
-          <div>
+        <GlassCard className="flex-shrink-0 flex flex-col gap-3 sm:gap-4 max-h-[calc(100vh-12rem)] overflow-y-auto custom-scrollbar" hoverEffect={false}>
+          <div className="flex-shrink-0">
             <h1 className="text-base sm:text-lg font-bold text-white mb-1 sm:mb-2 line-clamp-2">{assignment?.title}</h1>
             <p className="text-[10px] sm:text-xs text-zinc-500">{assignment?.courseName}</p>
           </div>
           
-          {/* Materials - Scrollable on mobile */}
-          <div className="flex flex-col gap-2 max-h-40 sm:max-h-none overflow-y-auto custom-scrollbar">
+          {/* Materials - Scrollable */}
+          <div className="flex flex-col gap-2 flex-shrink-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Original Files</p>
-            {assignment?.materials?.length > 0 ? (
-              assignment.materials.map((m, i) => {
-                const MatIcon = getMaterialIcon(m);
-                return (
-                  <a
-                    key={i}
-                    href={getMaterialLink(m)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-indigo-500/50 transition-all group"
-                  >
-                    <div className="p-1.5 sm:p-2 bg-zinc-900 rounded-lg text-indigo-400 group-hover:text-white transition-colors">
-                      <MatIcon size={14} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] sm:text-xs font-medium text-zinc-200 truncate">{getMaterialTitle(m)}</p>
-                      <p className="text-[9px] sm:text-[10px] text-zinc-500 flex items-center gap-1">
-                        Open <ExternalLink size={8} />
-                      </p>
-                    </div>
-                  </a>
-                );
-              })
-            ) : (
-              <div className="text-xs text-zinc-500 italic p-2">No attachments found.</div>
-            )}
+            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+              {assignment?.materials?.length > 0 ? (
+                assignment.materials.map((m, i) => {
+                  const MatIcon = getMaterialIcon(m);
+                  return (
+                    <a
+                      key={i}
+                      href={getMaterialLink(m)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-white/5 hover:border-indigo-500/50 transition-all group"
+                    >
+                      <div className="p-1.5 sm:p-2 bg-zinc-900 rounded-lg text-indigo-400 group-hover:text-white transition-colors flex-shrink-0">
+                        <MatIcon size={14} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] sm:text-xs font-medium text-zinc-200 truncate">{getMaterialTitle(m)}</p>
+                        <p className="text-[9px] sm:text-[10px] text-zinc-500 flex items-center gap-1">
+                          Open <ExternalLink size={8} />
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })
+              ) : (
+                <div className="text-xs text-zinc-500 italic p-2">No attachments found.</div>
+              )}
 
-            {assignment?.alternateLink && (
-              <a
-                href={assignment.alternateLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-[10px] sm:text-xs font-medium transition-colors border border-indigo-500/20"
-              >
-                <LinkIcon size={12} />
-                View on Classroom
-              </a>
-            )}
+              {assignment?.alternateLink && (
+                <a
+                  href={assignment.alternateLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 text-[10px] sm:text-xs font-medium transition-colors border border-indigo-500/20"
+                >
+                  <LinkIcon size={12} />
+                  View on Classroom
+                </a>
+              )}
+            </div>
           </div>
 
-          <div className="mt-2 h-px bg-zinc-800 w-full"></div>
-          <div className="text-xs text-zinc-500 max-h-32 overflow-y-auto custom-scrollbar">
+          <div className="flex-shrink-0 mt-2 h-px bg-zinc-800 w-full"></div>
+          <div className="text-xs text-zinc-500 max-h-32 overflow-y-auto custom-scrollbar flex-shrink-0">
             {assignment?.description || "No text description."}
           </div>
 
           {/* Document Selector for Multiple PDFs */}
           {hasMultipleDocs && (
             <>
-              <div className="mt-4 h-px bg-zinc-800 w-full"></div>
-              <div className="flex flex-col gap-2">
+              <div className="flex-shrink-0 mt-4 h-px bg-zinc-800 w-full"></div>
+              <div className="flex flex-col gap-2 flex-shrink-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
                   📄 Select Document for AI
                 </p>
                 <p className="text-[9px] text-zinc-500 italic">
                   Found {allDocMaterials.length} documents. Choose which one to use for generating solutions:
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
                   {allDocMaterials.map((doc, idx) => {
                     const docId = doc.driveFile?.driveFile?.id || doc.driveFile?.id;
                     const docTitle = doc.driveFile?.driveFile?.title || doc.driveFile?.title || `Document ${idx + 1}`;
@@ -332,6 +335,11 @@ const Workspace = () => {
 
       {/* Main Content Area */}
       <div className="lg:col-span-8 flex-1 lg:h-full flex flex-col min-h-[60vh] lg:min-h-0">
+        {/* Workspace Guide - Always visible at top */}
+        <div className="mb-3 sm:mb-4">
+          <WorkspaceGuide />
+        </div>
+
         {/* Tab Buttons - Scrollable */}
         <div className="flex gap-2 mb-3 sm:mb-4 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-hide">
           <button onClick={() => setActiveTab('ai')} className={`px-3 sm:px-4 py-2 rounded-lg transition-all whitespace-nowrap text-sm ${activeTab === 'ai' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}>
@@ -351,16 +359,36 @@ const Workspace = () => {
           {activeTab === 'ai' && (
             <>
               {!currentSolution && !generating && (
-                <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 h-full">
-                  <Sparkles className="w-16 h-16 mb-4 text-zinc-800" />
-                  <p className="text-lg font-medium text-zinc-400">Select an AI tool to begin.</p>
-                  <p className="text-sm">We have analyzed the materials.</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 h-full p-6">
+                  <Sparkles className="w-16 h-16 mb-4 text-zinc-700" />
+                  <p className="text-lg font-medium text-zinc-300 mb-2">Ready to generate!</p>
+                  <p className="text-sm text-zinc-500 text-center max-w-md mb-6">We've analyzed your assignment materials. Select an AI tool from the left panel to get started.</p>
+                  
+                  {/* Quick start tips */}
+                  <div className="bg-zinc-800/50 rounded-lg p-4 max-w-md space-y-3 border border-zinc-700">
+                    <p className="text-xs font-semibold text-zinc-300">📌 Quick Tips:</p>
+                    <ul className="text-xs text-zinc-400 space-y-2">
+                      <li className="flex gap-2">
+                        <span>1️⃣</span>
+                        <span>Click <strong className="text-indigo-400">Explain</strong> to understand the assignment concepts</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span>2️⃣</span>
+                        <span>Try <strong className="text-indigo-400">Quiz</strong> to test your understanding</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span>3️⃣</span>
+                        <span>Use <strong className="text-indigo-400">Chat</strong> tab for specific questions</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               )}
               {generating && (
                 <div className="flex-1 flex flex-col items-center justify-center text-indigo-400 animate-pulse h-full">
                   <Sparkles className="w-12 h-12 mb-4" />
-                  <p>Generating Solution...</p>
+                  <p className="mb-2">Generating Solution...</p>
+                  <p className="text-xs text-zinc-500">This may take a few seconds</p>
                 </div>
               )}
               {currentSolution && !generating && (

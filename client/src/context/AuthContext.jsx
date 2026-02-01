@@ -34,7 +34,17 @@ export const AuthProvider = ({ children }) => {
         const res = await api.post('/auth/google', { code });
         setUser(res.data.user);
         localStorage.setItem('user', JSON.stringify(res.data.user));
-        // navigate('/')
+        
+        // Check if this is first login (first time user without API key setup)
+        const isFirstLogin = !localStorage.getItem('hasCompletedAPIKeySetup');
+        if (isFirstLogin && !localStorage.getItem('groq_api_key')) {
+          // Mark that user has been to login
+          localStorage.setItem('hasCompletedAPIKeySetup', 'false');
+          // Redirect to API key setup
+          navigate('/api-key-setup');
+        } else {
+          navigate('/dashboard');
+        }
       } catch (err) {
         console.error("Login failed", err);
         toast.error("Login failed. Please try again.");

@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import Layout from "./components/layout/Layout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import APIKeySetup from "./pages/APIKeySetup";
 import Dashboard from "./pages/Dashboard";
 import Workspace from "./pages/Workspace";
 import Profile from "./pages/Profile";
@@ -58,6 +59,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/api-key-setup" element={<APIKeySetup />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
 
