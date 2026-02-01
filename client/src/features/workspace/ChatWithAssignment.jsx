@@ -158,7 +158,7 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
         abortControllerRef.current = new AbortController();
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/ai/chat-stream`, {
+            const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/ai/chat-stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
