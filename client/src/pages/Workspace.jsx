@@ -19,22 +19,53 @@ import useSEO from "../hooks/useSEO";
 // Helper to parse error and extract rate limit info
 const parseErrorMessage = (err) => {
   const errorText = err.response?.data?.error || err.message || '';
+  const lowerText = errorText.toLowerCase();
+  const statusCode = err.response?.status;
   
   // Check for rate limit error
-  if (err.response?.status === 429 || errorText.includes('rate_limit') || errorText.includes('Rate limit')) {
-    // Extract wait time if available
+  if (statusCode === 429 || lowerText.includes('rate_limit') || lowerText.includes('rate limit')) {
     const retryMatch = errorText.match(/try again in (\d+m?\d*\.?\d*s?)/i);
     const waitTime = retryMatch ? retryMatch[1] : '5 minutes';
     return { isRateLimit: true, message: `API rate limit exceeded. Please wait ${waitTime} and try again.` };
   }
   
   // Check for auth error
-  if (err.response?.status === 401) {
-    return { isRateLimit: false, message: 'Authentication failed. Please check your API Key.' };
+  if (statusCode === 401 || lowerText.includes('api key') || lowerText.includes('unauthorized')) {
+    return { isRateLimit: false, message: 'API Key invalid or missing. Please update in Settings.' };
+  }
+  
+  // Check for PDF encryption/access errors
+  if (lowerText.includes('encrypt') || lowerText.includes('password') || lowerText.includes('protected')) {
+    return { isRateLimit: false, message: '🔒 PDF is encrypted/password-protected. Cannot extract content.' };
+  }
+  
+  // Check for access denied errors  
+  if (lowerText.includes('access denied') || lowerText.includes('permission') || statusCode === 403) {
+    return { isRateLimit: false, message: '🚫 Access denied to file. You may not have permission to view this file.' };
+  }
+  
+  // Check for external organization files
+  if (lowerText.includes('external organization') || lowerText.includes('external')) {
+    return { isRateLimit: false, message: '🏢 File is from external organization. Cannot access.' };
+  }
+  
+  // Check for file not found
+  if (lowerText.includes('not found') || lowerText.includes('deleted') || statusCode === 404) {
+    return { isRateLimit: false, message: '📄 File not found. It may have been deleted or moved.' };
+  }
+  
+  // Check for no content extracted
+  if (lowerText.includes('no content') || lowerText.includes('could not be extracted')) {
+    return { isRateLimit: false, message: '📭 No content could be extracted. The PDF may be image-only or corrupted.' };
+  }
+  
+  // Check for AI processing failure
+  if (lowerText.includes('ai processing') || lowerText.includes('groq')) {
+    return { isRateLimit: false, message: '🤖 AI processing failed. Please try again or check your API key.' };
   }
   
   // Generic error
-  return { isRateLimit: false, message: 'An error occurred. Please try again.' };
+  return { isRateLimit: false, message: errorText || 'An error occurred. Please try again.' };
 };
 
 const Workspace = () => {
@@ -130,11 +161,40 @@ const Workspace = () => {
           toast.success("Ready for AI! Text extraction completed.");
         }
 
-        // Show warnings about files that couldn't be accessed
+        // Show detailed warnings about files that couldn't be accessed
         if (res.data.warnings && res.data.warnings.length > 0) {
-          toast(`Some files couldn't be accessed: ${res.data.warnings.length} file(s)`, {
-            icon: '⚠️',
-            duration: 5000
+          res.data.warnings.forEach((warning, idx) => {
+            // Delay each toast to avoid flooding
+            setTimeout(() => {
+              const lowerWarning = warning.toLowerCase();
+              let icon = '⚠️';
+              let message = warning;
+              
+              // Format message based on error type
+              if (lowerWarning.includes('encrypt') || lowerWarning.includes('password')) {
+                icon = '🔒';
+                message = 'PDF is encrypted/password-protected';
+              } else if (lowerWarning.includes('access denied') || lowerWarning.includes('permission')) {
+                icon = '🚫';
+                message = 'No permission to access file';
+              } else if (lowerWarning.includes('external')) {
+                icon = '🏢';
+                message = 'File from external organization';
+              } else if (lowerWarning.includes('not found')) {
+                icon = '📄';
+                message = 'File not found or deleted';
+              }
+              
+              toast(message, {
+                icon,
+                duration: 6000,
+                style: {
+                  border: '1px solid #f97316',
+                  background: '#18181b',
+                  color: '#fdba74',
+                }
+              });
+            }, idx * 1000);
           });
         }
 

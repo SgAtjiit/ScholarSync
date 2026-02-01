@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 
 // Helper to parse error and extract rate limit info
 const parseErrorMessage = (errorText) => {
+    if (!errorText) errorText = '';
+    const lowerText = errorText.toLowerCase();
+    
     // Check for rate limit error
-    if (errorText.includes('rate_limit') || errorText.includes('Rate limit') || errorText.includes('429')) {
-        // Extract wait time if available
+    if (lowerText.includes('rate_limit') || lowerText.includes('rate limit') || errorText.includes('429')) {
         const retryMatch = errorText.match(/try again in (\d+m?\d*\.?\d*s?)/i) || errorText.match(/wait (\d+m?\d*\.?\d*s?)/i);
         const waitTime = retryMatch ? retryMatch[1] : '5 minutes';
         return {
@@ -19,19 +21,58 @@ const parseErrorMessage = (errorText) => {
     }
     
     // Check for auth error
-    if (errorText.includes('401') || errorText.includes('API key') || errorText.includes('Unauthorized')) {
+    if (errorText.includes('401') || lowerText.includes('api key') || lowerText.includes('unauthorized') || lowerText.includes('invalid_api_key')) {
         return {
             isRateLimit: false,
-            toastMessage: 'Authentication failed. Check your API Key.',
-            chatMessage: '⚠️ API Key missing or invalid. Please update it in Settings.'
+            toastMessage: 'Invalid API Key. Please check your settings.',
+            chatMessage: '⚠️ API Key is missing or invalid. Go to Profile → Settings to update your Groq API Key.'
         };
     }
     
-    // Generic error
+    // Check for content not extracted
+    if (lowerText.includes('not extracted') || lowerText.includes('no content')) {
+        return {
+            isRateLimit: false,
+            toastMessage: 'Assignment content not ready.',
+            chatMessage: '📄 Assignment content not extracted yet. Please wait for extraction to complete or try reloading the page.'
+        };
+    }
+    
+    // Check for assignment not found
+    if (lowerText.includes('not found') || lowerText.includes('404')) {
+        return {
+            isRateLimit: false,
+            toastMessage: 'Assignment not found.',
+            chatMessage: '❌ Assignment not found. It may have been deleted or moved.'
+        };
+    }
+    
+    // Check for network errors
+    if (lowerText.includes('network') || lowerText.includes('fetch') || lowerText.includes('failed to fetch') || lowerText.includes('networkerror')) {
+        return {
+            isRateLimit: false,
+            toastMessage: 'Network error. Check your connection.',
+            chatMessage: '🌐 Network error. Please check your internet connection and try again.'
+        };
+    }
+    
+    // Check for server errors
+    if (errorText.includes('500') || lowerText.includes('internal server')) {
+        return {
+            isRateLimit: false,
+            toastMessage: 'Server error. Try again later.',
+            chatMessage: '🔧 Server error occurred. Please try again in a few moments.'
+        };
+    }
+    
+    // Generic error with original message if it's meaningful
+    const meaningfulError = errorText && errorText.length < 150 && !errorText.includes('undefined');
     return {
         isRateLimit: false,
-        toastMessage: 'An error occurred. Please try again.',
-        chatMessage: 'Sorry, I encountered an error. Please try again.'
+        toastMessage: meaningfulError ? errorText : 'An error occurred. Please try again.',
+        chatMessage: meaningfulError 
+            ? `❌ Error: ${errorText}` 
+            : 'Sorry, I encountered an error. Please check your API key in Settings and try again.'
     };
 };
 
@@ -230,7 +271,8 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
             console.error('Chat error:', error);
             
             // Parse error for user-friendly messages
-            const parsed = parseErrorMessage(error.message || '');
+            const errorMessage = error.message || error.toString() || 'Unknown error';
+            const parsed = parseErrorMessage(errorMessage);
             
             // Show appropriate toast
             toast.error(parsed.toastMessage);

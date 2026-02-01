@@ -78,6 +78,18 @@ const getPdfPageImages = async (fileBuffer, title) => {
         console.log(`Converted ${images.length} pages to images from: ${title}`);
         return images;
     } catch (err) {
+        const errorMessage = err.message || '';
+        const lowerError = errorMessage.toLowerCase();
+        
+        // Check for specific PDF issues
+        if (lowerError.includes('encrypt') || lowerError.includes('password')) {
+            console.error(`PDF is encrypted/password-protected: ${title}`);
+            throw new Error(`PDF is encrypted or password-protected. Cannot extract content.`);
+        } else if (lowerError.includes('invalid pdf') || lowerError.includes('bad pdf')) {
+            console.error(`Invalid/corrupted PDF: ${title}`);
+            throw new Error(`PDF appears to be corrupted or invalid.`);
+        }
+        
         console.error(`Failed to convert PDF pages to images for ${title}:`, err.message);
         return [];
     }
@@ -182,14 +194,45 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
         try {
             if (mimeType.includes('pdf') || title.toLowerCase().endsWith('.pdf')) {
                 // Convert PDF to images and extract content from each page
-                const pageImages = await getPdfPageImages(fileBuffer, title);
+                let pageImages = [];
+                let pdfError = null;
+                
+                try {
+                    pageImages = await getPdfPageImages(fileBuffer, title);
+                } catch (pdfErr) {
+                    pdfError = pdfErr.message;
+                    console.error(`PDF processing error for ${title}:`, pdfErr.message);
+                }
+                
+                // If we got an explicit error (like encryption), add to failed files
+                if (pdfError) {
+                    failedFiles.push({ fileName: title, error: pdfError });
+                    continue;
+                }
                 
                 if (pageImages.length === 0) {
                     // Fallback to text extraction if image conversion fails
-                    const pdfParser = new PDFParse({ data: fileBuffer });
-                    const pdfData = await pdfParser.getText();
-                    fullExtractedContent += `\n\n========== ${title} ==========\n${pdfData.text || '[No text content]'}`;
-                    methodsUsed.push(`pdf-text-fallback:${title}`);
+                    try {
+                        const pdfParser = new PDFParse({ data: fileBuffer });
+                        const pdfData = await pdfParser.getText();
+                        const textContent = pdfData.text || '';
+                        
+                        if (textContent.trim().length < 50) {
+                            failedFiles.push({ fileName: title, error: 'PDF appears to be image-only or has no extractable text' });
+                            continue;
+                        }
+                        
+                        fullExtractedContent += `\n\n========== ${title} ==========\n${textContent}`;
+                        methodsUsed.push(`pdf-text-fallback:${title}`);
+                    } catch (textErr) {
+                        const errMsg = textErr.message?.toLowerCase() || '';
+                        if (errMsg.includes('encrypt') || errMsg.includes('password')) {
+                            failedFiles.push({ fileName: title, error: 'PDF is encrypted or password-protected' });
+                        } else {
+                            failedFiles.push({ fileName: title, error: `PDF extraction failed: ${textErr.message}` });
+                        }
+                        continue;
+                    }
                 } else {
                     fullExtractedContent += `\n\n========== ${title} ==========\n`;
                     
