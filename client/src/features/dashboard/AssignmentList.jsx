@@ -1,7 +1,9 @@
 import { useState } from "react";
 import GlassCard from "../../components/common/GlassCard";
-import { Calendar, CheckCircle2, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, CheckCircle2, Clock, ChevronLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { SkeletonCard } from "../../components/common/LoadingSkeleton";
+import EmptyState from "../../components/common/EmptyState";
 
 const ITEMS_PER_PAGE = 9;
 
@@ -58,19 +60,49 @@ const AssignmentList = ({ assignments, loading }) => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 sm:h-48 rounded-2xl bg-zinc-900/50 animate-pulse border border-white/5" />
-        ))}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-48 bg-zinc-800/50 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div 
+              key={i} 
+              className="h-48 sm:h-56 rounded-2xl bg-zinc-900/50 border border-white/5 p-4 sm:p-6 space-y-4 animate-fade-in"
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              <div className="flex justify-between items-start">
+                <div className="h-5 w-24 bg-zinc-800/50 rounded-full animate-pulse" />
+                <div className="h-4 w-4 bg-zinc-800/50 rounded animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-5 w-full bg-zinc-800/50 rounded animate-pulse" />
+                <div className="h-5 w-3/4 bg-zinc-800/50 rounded animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-zinc-800/30 rounded animate-pulse" />
+                <div className="h-3 w-4/5 bg-zinc-800/30 rounded animate-pulse" />
+              </div>
+              <div className="pt-4 border-t border-white/5 flex justify-between">
+                <div className="h-3 w-24 bg-zinc-800/30 rounded animate-pulse" />
+                <div className="h-3 w-12 bg-zinc-800/30 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (assignments.length === 0) {
     return (
-      <div className="text-center py-12 sm:py-20 bg-zinc-900/30 rounded-2xl sm:rounded-3xl border border-dashed border-zinc-800">
-        <p className="text-zinc-500 text-base sm:text-lg">No assignments found for this filter.</p>
-      </div>
+      <EmptyState
+        icon={FileText}
+        title="No assignments found"
+        description="Try syncing your Google Classroom or changing the filter to see assignments."
+        variant="default"
+        className="bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800"
+      />
     );
   }
 

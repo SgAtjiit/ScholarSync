@@ -121,9 +121,10 @@ export const useClientSideAI = ({ userId }) => {
      * @param {string} options.assignmentId - Assignment ID
      * @param {boolean} options.useVision - Whether to use vision API
      * @param {boolean} options.forceRefresh - Skip cache and re-extract
+     * @param {boolean} options.appendMode - Append to existing content (for multi-doc extraction)
      * @returns {Promise<Object>}
      */
-    const extractContent = useCallback(async ({ fileId, fileName, assignmentId, useVision = true, forceRefresh = false }) => {
+    const extractContent = useCallback(async ({ fileId, fileName, assignmentId, useVision = true, forceRefresh = false, appendMode = false }) => {
         if (!fileId) {
             throw new Error('File ID is required');
         }
@@ -132,7 +133,7 @@ export const useClientSideAI = ({ userId }) => {
         setCurrentAssignmentId(assignmentId);
 
         // Check cache first (unless force refresh)
-        if (!forceRefresh) {
+        if (!forceRefresh && !appendMode) {
             const cacheResult = await loadFromCache({ fileId, assignmentId });
             if (cacheResult.loaded) {
                 setExtractionProgress({ stage: 'complete', progress: 100, message: 'Loaded from cache!' });
@@ -164,18 +165,41 @@ export const useClientSideAI = ({ userId }) => {
                 { isHeavy: true }
             );
 
-            setExtractedContent(result);
+            // Handle append mode for multi-document extraction
+            if (appendMode && extractedContent) {
+                const mergedContent = {
+                    content: extractedContent.content + '\n\n---\n\n## ' + fileName + '\n\n' + result.content,
+                    pageCount: (extractedContent.pageCount || 0) + (result.pageCount || 0),
+                    hasImages: extractedContent.hasImages || result.hasImages,
+                    tokenEstimate: (extractedContent.tokenEstimate || 0) + (result.tokenEstimate || 0),
+                    pages: [...(extractedContent.pages || []), ...(result.pages || [])],
+                    documents: [...(extractedContent.documents || [{ name: 'Previous' }]), { name: fileName, pageCount: result.pageCount }],
+                };
+                setExtractedContent(mergedContent);
+                setIsCached(false);
+                refreshUsage();
+                return result; // Return individual result for progress tracking
+            }
+
+            // First document or single document mode
+            const contentWithDocInfo = {
+                ...result,
+                documents: [{ name: fileName, pageCount: result.pageCount }],
+            };
+            setExtractedContent(contentWithDocInfo);
             setIsCached(false);
             
-            // Save to cache in background
-            saveExtraction(fileId, userId, fileName, assignmentId, result)
-                .then(res => {
-                    if (res.success) {
-                        setIsCached(true);
-                        console.log('Extraction cached successfully');
-                    }
-                })
-                .catch(err => console.error('Failed to cache extraction:', err));
+            // Save to cache in background (only for single doc)
+            if (!appendMode) {
+                saveExtraction(fileId, userId, fileName, assignmentId, result)
+                    .then(res => {
+                        if (res.success) {
+                            setIsCached(true);
+                            console.log('Extraction cached successfully');
+                        }
+                    })
+                    .catch(err => console.error('Failed to cache extraction:', err));
+            }
             
             refreshUsage();
             return result;

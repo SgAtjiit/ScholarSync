@@ -4,6 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { chatWithContentStream } from '../../services/aiGenerationService';
+import { cleanTextContent } from '../../utils/textCleaner';
+
+// Clean chat message for display
+const cleanChatMessage = (text) => {
+    if (!text || typeof text !== 'string') return text || '';
+    return cleanTextContent(text);
+};
 
 // Helper to parse error and extract rate limit info
 const parseErrorMessage = (errorText) => {
@@ -384,7 +391,7 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle, extractedContent })
                                     <Sparkles size={10} className="sm:w-3 sm:h-3" /> AI
                                 </div>
                             )}
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{msg.role === 'ai' ? cleanChatMessage(msg.content) : msg.content}</p>
                         </div>
                     </div>
                 ))}
@@ -396,7 +403,7 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle, extractedContent })
                             <div className="flex items-center gap-2 mb-1 sm:mb-2 text-indigo-400 text-[10px] sm:text-xs font-medium">
                                 <Sparkles size={10} className="sm:w-3 sm:h-3 animate-pulse" /> AI
                             </div>
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{streamingMessage}<span className="animate-pulse">▊</span></p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{cleanChatMessage(streamingMessage)}<span className="animate-pulse">▊</span></p>
                         </div>
                     </div>
                 )}

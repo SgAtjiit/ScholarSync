@@ -2,17 +2,27 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCcw, RefreshCw } from 'lucide-react';
 import Button from '../../components/common/Button';
-import toast from 'react-hot-toast'; // ✨ ADDED
+import toast from 'react-hot-toast';
+import { cleanTextContent } from '../../utils/textCleaner';
+
+// Clean text for display (removes any leftover markdown artifacts)
+const cleanText = (text) => {
+    if (!text || typeof text !== 'string') return text || '';
+    return cleanTextContent(text);
+};
 
 const Flashcards = ({ content, onRegenerate }) => {
-  let data = { flashcards: [] };
+  let data = { cards: [], flashcards: [] };
   try {
     data = typeof content === 'string' ? JSON.parse(content) : content;
   } catch (e) { console.error("JSON Parse error", e); }
 
+  // Support both 'cards' and 'flashcards' keys
+  const cards = data.cards || data.flashcards || [];
+
   // ✨ ADDED: Error Toast if content is empty
   useEffect(() => {
-    if (!data.flashcards || data.flashcards.length === 0) {
+    if (cards.length === 0) {
       toast.error("Could not load flashcards content.");
     }
   }, []);
@@ -36,7 +46,7 @@ const Flashcards = ({ content, onRegenerate }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
-        {data.flashcards?.map((card, idx) => (
+        {cards.map((card, idx) => (
           <div
             key={idx}
             onClick={() => setFlipped(p => ({ ...p, [idx]: !p[idx] }))}
@@ -53,7 +63,7 @@ const Flashcards = ({ content, onRegenerate }) => {
                 style={{ backfaceVisibility: 'hidden' }}
               >
                 <span className="text-[10px] sm:text-xs font-bold text-zinc-500 uppercase mb-2 sm:mb-4">Term</span>
-                <p className="text-base sm:text-xl font-bold text-indigo-400 line-clamp-3">{card.front}</p>
+                <p className="text-base sm:text-xl font-bold text-indigo-400 line-clamp-3">{cleanText(card.front)}</p>
                 <p className="absolute bottom-2 sm:bottom-4 text-[10px] sm:text-xs text-zinc-600">Tap to flip</p>
               </div>
 
@@ -63,7 +73,7 @@ const Flashcards = ({ content, onRegenerate }) => {
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
                 <span className="text-[10px] sm:text-xs font-bold text-indigo-200 uppercase mb-2 sm:mb-4">Definition</span>
-                <p className="text-sm sm:text-lg text-white leading-relaxed line-clamp-4 sm:line-clamp-none">{card.back}</p>
+                <p className="text-sm sm:text-lg text-white leading-relaxed line-clamp-4 sm:line-clamp-none">{cleanText(card.back)}</p>
               </div>
             </motion.div>
           </div>

@@ -5,6 +5,7 @@
  */
 
 import { chatCompletion, chatCompletionStream, hasApiKey } from './groqService';
+import { cleanMarkdownFromHTML, cleanJSONContent, sanitizeHTML } from '../utils/textCleaner';
 
 const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
@@ -159,17 +160,30 @@ const cleanAndParseJSON = (text) => {
         if (firstBrace !== -1 && lastBrace !== -1) {
             cleaned = cleaned.substring(firstBrace, lastBrace + 1);
         }
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        // Clean text content within JSON (removes markdown artifacts)
+        return cleanJSONContent(parsed);
     } catch (e) {
         throw new Error('Failed to parse JSON response: ' + e.message);
     }
 };
 
 /**
- * Clean HTML response
+ * Clean HTML response - removes markdown artifacts and sanitizes
  */
 const cleanHTML = (text) => {
-    return text.replace(/```html/g, '').replace(/```/g, '').trim();
+    if (!text || typeof text !== 'string') return '';
+    
+    // Remove code block wrappers
+    let cleaned = text.replace(/```html\n?/g, '').replace(/```\n?/g, '');
+    
+    // Clean markdown artifacts that leaked into HTML
+    cleaned = cleanMarkdownFromHTML(cleaned);
+    
+    // Sanitize for safe rendering
+    cleaned = sanitizeHTML(cleaned);
+    
+    return cleaned.trim();
 };
 
 /**

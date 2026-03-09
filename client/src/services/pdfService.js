@@ -169,6 +169,9 @@ export const pageHasImages = async (page) => {
     }
 };
 
+// Maximum pages allowed for processing
+const MAX_PAGES = 50;
+
 /**
  * Complete PDF extraction pipeline
  * Extracts text from all pages and renders images for vision processing
@@ -190,6 +193,12 @@ export const extractPdfContent = async (arrayBuffer, options = {}) => {
     
     const pdf = await loadPdfDocument(arrayBuffer);
     const numPages = pdf.numPages;
+
+    // Check page limit
+    if (numPages > MAX_PAGES) {
+        throw new Error(`Document has ${numPages} pages, which exceeds the ${MAX_PAGES}-page limit. Please use a shorter document or split it into parts.`);
+    }
+
     const pages = [];
 
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {

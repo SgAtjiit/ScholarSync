@@ -84,7 +84,7 @@ const Workspace = () => {
   const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState('explain');
   const [activeTab, setActiveTab] = useState('ai');
-  const [selectedDocId, setSelectedDocId] = useState(null);
+  const [selectedDocIds, setSelectedDocIds] = useState([]);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
 
@@ -144,12 +144,34 @@ const Workspace = () => {
   
   // Get all document materials
   const allDocMaterials = getDocumentMaterials(assignment?.materials);
-  const hasMultipleDocs = allDocMaterials.length > 1;
   
-  // Set selected doc on first load
-  if (!selectedDocId && allDocMaterials.length > 0) {
-    setSelectedDocId(allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id);
+  // Set selected docs on first load (select first by default)
+  if (selectedDocIds.length === 0 && allDocMaterials.length > 0) {
+    const firstDocId = allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id;
+    setSelectedDocIds([firstDocId]);
   }
+
+  // Toggle document selection
+  const toggleDocSelection = (docId) => {
+    setSelectedDocIds(prev => {
+      if (prev.includes(docId)) {
+        return prev.filter(id => id !== docId);
+      } else {
+        return [...prev, docId];
+      }
+    });
+  };
+
+  // Select all documents
+  const selectAllDocs = () => {
+    const allIds = allDocMaterials.map(m => m.driveFile?.driveFile?.id || m.driveFile?.id);
+    setSelectedDocIds(allIds);
+  };
+
+  // Deselect all documents
+  const deselectAllDocs = () => {
+    setSelectedDocIds([]);
+  };
 
   // Load assignment data only - NO backend extraction
   useEffect(() => {
@@ -164,11 +186,11 @@ const Workspace = () => {
         if (foundAssignment) {
           setAssignment(foundAssignment);
           
-          // Set default selected doc
+          // Set default selected docs
           const docs = getDocumentMaterials(foundAssignment.materials);
-          if (docs.length > 0 && !selectedDocId) {
+          if (docs.length > 0 && selectedDocIds.length === 0) {
             const firstDocId = docs[0].driveFile?.driveFile?.id || docs[0].driveFile?.id;
-            setSelectedDocId(firstDocId);
+            setSelectedDocIds([firstDocId]);
           }
         } else {
           // Fallback: try direct fetch
@@ -193,23 +215,23 @@ const Workspace = () => {
     if (user) init();
   }, [assignmentId, user]);
 
-  // Auto-load from cache when selectedDocId changes
+  // Auto-load from cache when selectedDocIds changes (only if single doc selected)
   useEffect(() => {
-    if (selectedDocId && user?._id && !clientAI.isExtracting && !clientAI.extractedContent) {
-      // Try to load from cache automatically
-      clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
+    if (selectedDocIds.length === 1 && user?._id && !clientAI.isExtracting && !clientAI.extractedContent) {
+      // Try to load from cache automatically for single doc
+      clientAI.loadFromCache({ fileId: selectedDocIds[0], assignmentId })
         .then(result => {
           if (result.loaded) {
             toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
           }
         });
     }
-  }, [selectedDocId, user?._id, assignmentId]);
+  }, [selectedDocIds, user?._id, assignmentId]);
 
-  // Extract content from selected document - CLIENT-SIDE with caching
+  // Extract content from selected documents - CLIENT-SIDE with caching
   const handleExtract = useCallback(async (forceRefresh = false) => {
-    if (!selectedDocId) {
-      toast.error("No document selected");
+    if (selectedDocIds.length === 0) {
+      toast.error("No documents selected");
       return;
     }
 
@@ -218,34 +240,53 @@ const Workspace = () => {
       return;
     }
 
-    const selectedMaterial = allDocMaterials.find(m => {
-      const fileId = m.driveFile?.driveFile?.id || m.driveFile?.id;
-      return fileId === selectedDocId;
-    });
+    // Clear previous content when starting new extraction
+    clientAI.clearContent();
 
-    const fileName = getMaterialTitle(selectedMaterial) || 'document';
+    const totalDocs = selectedDocIds.length;
+    let allContent = [];
+    let totalPages = 0;
+    let totalTokens = 0;
 
-    toast.loading(forceRefresh ? "Re-extracting document..." : "Loading document...", { id: 'extract' });
+    toast.loading(`Extracting ${totalDocs} document${totalDocs > 1 ? 's' : ''}...`, { id: 'extract' });
 
     try {
-      const result = await clientAI.extractContent({
-        fileId: selectedDocId,
-        fileName,
-        assignmentId,
-        useVision: true,
-        forceRefresh,
-      });
+      for (let i = 0; i < selectedDocIds.length; i++) {
+        const docId = selectedDocIds[i];
+        const selectedMaterial = allDocMaterials.find(m => {
+          const fileId = m.driveFile?.driveFile?.id || m.driveFile?.id;
+          return fileId === docId;
+        });
 
-      if (clientAI.isCached && !forceRefresh) {
-        toast.success(`Loaded from cache (${result.pageCount} pages)`, { id: 'extract' });
-      } else {
-        toast.success(`Extracted ${result.pageCount} pages (${Math.round(result.tokenEstimate / 1000)}k tokens)`, { id: 'extract' });
+        const fileName = getMaterialTitle(selectedMaterial) || `document_${i + 1}`;
+
+        toast.loading(`Extracting (${i + 1}/${totalDocs}): ${fileName}...`, { id: 'extract' });
+
+        const result = await clientAI.extractContent({
+          fileId: docId,
+          fileName,
+          assignmentId,
+          useVision: true,
+          forceRefresh,
+          appendMode: i > 0, // Append to existing content for subsequent docs
+        });
+
+        totalPages += result.pageCount || 0;
+        totalTokens += result.tokenEstimate || 0;
+        allContent.push({ fileName, pageCount: result.pageCount });
       }
+
+      toast.success(
+        totalDocs > 1 
+          ? `Extracted ${totalDocs} documents (${totalPages} pages, ~${Math.round(totalTokens / 1000)}k tokens)` 
+          : `Extracted ${totalPages} pages (~${Math.round(totalTokens / 1000)}k tokens)`,
+        { id: 'extract' }
+      );
 
     } catch (error) {
       toast.error(error.message, { id: 'extract' });
     }
-  }, [selectedDocId, clientAI, allDocMaterials, assignmentId]);
+  }, [selectedDocIds, clientAI, allDocMaterials, assignmentId]);
 
   // Generate AI content - CLIENT-SIDE
   const handleGenerate = useCallback(async (mode, forceRegenerate = false, quizOptions = null) => {
@@ -339,19 +380,19 @@ const Workspace = () => {
         rateLimiterState={clientAI.rateLimiterState}
       />
 
-      {/* Left Sidebar - Collapsible on mobile */}
+      {/* Left Sidebar - Scrollable */}
       <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6 lg:h-full lg:overflow-hidden">
-        <GlassCard className="flex-shrink-0 flex flex-col gap-3 sm:gap-4 max-h-[calc(100vh-12rem)] overflow-y-auto custom-scrollbar" hoverEffect={false}>
-          <div className="flex-shrink-0">
+        <GlassCard className="flex-1 flex flex-col gap-3 sm:gap-4 overflow-y-auto custom-scrollbar" hoverEffect={false}>
+          <div>
             <h1 className="text-base sm:text-lg font-bold text-white mb-1 sm:mb-2 line-clamp-2">{assignment?.title}</h1>
             <p className="text-[10px] sm:text-xs text-zinc-500">{assignment?.courseName}</p>
           </div>
 
           {/* Extract Button - NEW CLIENT-SIDE EXTRACTION with caching */}
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2">
             <Button
               onClick={() => handleExtract(!!clientAI.extractedContent)}
-              disabled={clientAI.isExtracting || clientAI.isLoadingCache || !selectedDocId}
+              disabled={clientAI.isExtracting || clientAI.isLoadingCache || selectedDocIds.length === 0}
               className="flex-1"
               size="sm"
             >
@@ -373,7 +414,7 @@ const Workspace = () => {
               ) : (
                 <>
                   <Download size={14} className="mr-2" />
-                  Extract Content
+                  {selectedDocIds.length > 1 ? `Extract ${selectedDocIds.length} Docs` : 'Extract Content'}
                 </>
               )}
             </Button>
@@ -381,22 +422,30 @@ const Workspace = () => {
 
           {/* Extraction Status */}
           {clientAI.extractedContent && (
-            <div className="p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-xl flex-shrink-0">
-              <div className="flex items-center gap-2 text-green-400 text-xs">
-                <Zap size={12} />
-                <span>
-                  {clientAI.extractedContent.pageCount} pages 
-                  {clientAI.isCached && ' (cached)'} 
-                  ({Math.round(clientAI.extractedContent.tokenEstimate / 1000)}k tokens)
-                </span>
+            <div className="p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-xl">
+              <div className="flex flex-col gap-1 text-green-400 text-xs">
+                <div className="flex items-center gap-2">
+                  <Zap size={12} />
+                  <span>
+                    {clientAI.extractedContent.pageCount} pages 
+                    {clientAI.extractedContent.documents?.length > 1 && ` from ${clientAI.extractedContent.documents.length} docs`}
+                    {clientAI.isCached && ' (cached)'} 
+                    ({Math.round(clientAI.extractedContent.tokenEstimate / 1000)}k tokens)
+                  </span>
+                </div>
+                {clientAI.extractedContent.documents?.length > 1 && (
+                  <div className="text-[9px] text-green-500/70 ml-5">
+                    {clientAI.extractedContent.documents.map(d => d.name).join(', ')}
+                  </div>
+                )}
               </div>
             </div>
           )}
           
-          {/* Materials - Scrollable */}
-          <div className="flex flex-col gap-2 flex-shrink-0">
+          {/* Materials */}
+          <div className="flex flex-col gap-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Original Files</p>
-            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col gap-2">
               {assignment?.materials?.length > 0 ? (
                 assignment.materials.map((m, i) => {
                   const MatIcon = getMaterialIcon(m);
@@ -438,49 +487,85 @@ const Workspace = () => {
             </div>
           </div>
 
-          <div className="flex-shrink-0 mt-2 h-px bg-zinc-800 w-full"></div>
-          <div className="text-xs text-zinc-500 max-h-32 overflow-y-auto custom-scrollbar flex-shrink-0">
+          <div className="mt-2 h-px bg-zinc-800 w-full"></div>
+          <div className="text-xs text-zinc-500">
             {assignment?.description || "No text description."}
           </div>
 
           {/* Document Selector for Multiple PDFs */}
-          {hasMultipleDocs && (
+          {allDocMaterials.length > 0 && (
             <>
-              <div className="flex-shrink-0 mt-4 h-px bg-zinc-800 w-full"></div>
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
-                  📄 Select Document for AI
-                </p>
+              <div className="mt-4 h-px bg-zinc-800 w-full"></div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">
+                    📄 Select Documents for AI
+                  </p>
+                  {allDocMaterials.length > 1 && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={selectAllDocs}
+                        disabled={clientAI.isExtracting}
+                        className="text-[9px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 hover:text-indigo-400 transition-colors"
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={deselectAllDocs}
+                        disabled={clientAI.isExtracting}
+                        className="text-[9px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 hover:text-red-400 transition-colors"
+                      >
+                        None
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <p className="text-[9px] text-zinc-500 italic">
-                  Found {allDocMaterials.length} documents. Choose which one to use for generating solutions:
+                  {allDocMaterials.length > 1 
+                    ? `Select one or more documents (${selectedDocIds.length} selected):`
+                    : 'Document to process:'}
                 </p>
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col gap-2">
                   {allDocMaterials.map((doc, idx) => {
                     const docId = doc.driveFile?.driveFile?.id || doc.driveFile?.id;
                     const docTitle = doc.driveFile?.driveFile?.title || doc.driveFile?.title || `Document ${idx + 1}`;
-                    const isSelected = selectedDocId === docId;
+                    const isSelected = selectedDocIds.includes(docId);
                     return (
-                      <button
+                      <label
                         key={idx}
-                        onClick={() => {
-                          setSelectedDocId(docId);
-                          setActiveTab('pdf');
-                          toast.success(`Selected: ${docTitle}`);
-                        }}
-                        className={`text-left p-2 rounded-lg text-xs transition-all ${
+                        className={`flex items-center gap-3 p-2 rounded-lg text-xs transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-indigo-600 text-white border border-indigo-400'
-                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:border-indigo-500/50'
-                        }`}
+                            ? 'bg-indigo-600/20 text-white border border-indigo-500/50'
+                            : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:border-indigo-500/30'
+                        } ${clientAI.isExtracting || clientAI.isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        <span className="font-medium">{isSelected ? '✓ ' : ''}{docTitle}</span>
-                        <p className="text-[8px] text-zinc-400 mt-1">
-                          {isSelected ? 'Currently selected' : 'Click to select & view'}
-                        </p>
-                      </button>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleDocSelection(docId)}
+                          disabled={clientAI.isExtracting || clientAI.isGenerating}
+                          className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium truncate block">{docTitle}</span>
+                          <p className="text-[8px] text-zinc-400 mt-0.5">
+                            Click to {isSelected ? 'deselect' : 'select'}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[8px] bg-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded shrink-0">
+                            ✓
+                          </span>
+                        )}
+                      </label>
                     );
                   })}
                 </div>
+                {selectedDocIds.length === 0 && (
+                  <p className="text-[9px] text-amber-400 mt-1">
+                    ⚠️ Select at least one document to extract
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -581,7 +666,7 @@ const Workspace = () => {
               )}
             </>
           )}
-          {activeTab === 'pdf' && <PDFViewer pdfFileId={selectedDocId || docFileId} />}
+          {activeTab === 'pdf' && <PDFViewer pdfFileId={selectedDocIds[0] || docFileId} />}
           {activeTab === 'chat' && (
             <ChatWithAssignment 
               assignmentId={assignmentId} 

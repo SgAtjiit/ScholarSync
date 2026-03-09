@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import Button from '../../components/common/Button';
 import { CheckCircle, XCircle, RefreshCw, Zap, Target, Brain, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { cleanTextContent } from '../../utils/textCleaner';
+
+// Clean text for display (removes any leftover markdown artifacts)
+const cleanText = (text) => {
+    if (!text || typeof text !== 'string') return text || '';
+    return cleanTextContent(text);
+};
 
 const Quiz = ({ content, onRegenerate }) => {
     let data = { questions: [] };
@@ -85,7 +92,7 @@ const Quiz = ({ content, onRegenerate }) => {
                                 onClick={() => handleSelect(idx, oIdx)}
                                 className={`w-full text-left p-3 sm:p-4 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between text-sm sm:text-base ${btnClass}`}
                             >
-                                <span>{opt}</span>
+                                <span>{cleanText(opt)}</span>
                                 {isSubmitted && oIdx === q.correctAnswer && <CheckCircle size={16} className="flex-shrink-0 ml-2" />}
                                 {isSubmitted && answers[idx] === oIdx && !isCorrect && <XCircle size={16} className="flex-shrink-0 ml-2" />}
                             </button>
@@ -189,7 +196,7 @@ const Quiz = ({ content, onRegenerate }) => {
                         </div>
                         <div className="p-4 rounded-lg bg-zinc-800 border border-white/5">
                             <p className="text-xs text-zinc-500 mb-1">Sample Answer:</p>
-                            <p className="text-zinc-300">{q.sampleAnswer}</p>
+                            <p className="text-zinc-300">{cleanText(q.sampleAnswer)}</p>
                         </div>
                     </div>
                 )}
@@ -218,7 +225,7 @@ const Quiz = ({ content, onRegenerate }) => {
                     <div key={idx} className="bg-zinc-900/50 border border-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
                             <p className="text-base sm:text-lg font-medium text-white">
-                                <span className="text-indigo-500 font-bold mr-2">{idx + 1}.</span>{q.question}
+                                <span className="text-indigo-500 font-bold mr-2">{idx + 1}.</span>{cleanText(q.question)}
                             </p>
                             {q.difficulty && getDifficultyBadge(q.difficulty)}
                         </div>
@@ -239,7 +246,7 @@ const Quiz = ({ content, onRegenerate }) => {
                                 </button>
                                 {showExplanation[idx] && (
                                     <div className="mt-2 p-3 rounded-lg bg-zinc-800/50 border border-white/5 text-sm text-zinc-300">
-                                        {q.explanation}
+                                        {cleanText(q.explanation)}
                                     </div>
                                 )}
                             </div>
