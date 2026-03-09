@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import useClientSideAI from "../hooks/useClientSideAI";
 import GlassCard from "../components/common/GlassCard";
 import AIAssistant from "../features/workspace/AIAssistant";
+import DocEditor from "../features/workspace/DocEditor";
 import Editor from "../features/workspace/Editor";
 import Flashcards from "../features/workspace/Flashcards";
 import Quiz from "../features/workspace/Quiz";
@@ -661,7 +662,15 @@ const Workspace = () => {
                       <div className="prose prose-invert prose-indigo max-w-none" dangerouslySetInnerHTML={{ __html: currentSolution }} />
                     </div>
                   )}
-                  {activeMode === 'draft' && (<Editor initialContent={currentSolution} assignmentId={assignmentId} onRegenerate={handleRegenerate} />)}
+                  {activeMode === 'draft' && (
+                    <DocEditor 
+                      initialContent={currentSolution} 
+                      assignmentId={assignmentId} 
+                      assignmentTitle={assignment?.title}
+                      courseName={assignment?.courseName}
+                      onRegenerate={handleRegenerate} 
+                    />
+                  )}
                 </>
               )}
             </>

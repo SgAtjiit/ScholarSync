@@ -27,6 +27,7 @@ import useClientSideAI from "../hooks/useClientSideAI";
 import api from "../api/axios";
 import GlassCard from "../components/common/GlassCard";
 import AIAssistant from "../features/workspace/AIAssistant";
+import DocEditor from "../features/workspace/DocEditor";
 import Editor from "../features/workspace/Editor";
 import Flashcards from "../features/workspace/Flashcards";
 import Quiz from "../features/workspace/Quiz";
@@ -390,6 +391,14 @@ const ClientSideWorkspace = () => {
                                 />
                             ) : activeMode === 'flashcards' ? (
                                 <Flashcards content={currentSolution} />
+                            ) : activeMode === 'draft' ? (
+                                <DocEditor 
+                                    initialContent={currentSolution} 
+                                    assignmentId={assignmentId}
+                                    assignmentTitle={assignment?.title}
+                                    courseName={assignment?.courseName}
+                                    onRegenerate={() => handleGenerate('draft', true)}
+                                />
                             ) : (
                                 <Editor 
                                     content={currentSolution} 

@@ -505,21 +505,52 @@ export const syncFromGoogleDocs = async (req, res) => {
 
         let htmlContent = response.data;
 
-        // 4. Clean up the HTML (Google Docs adds a lot of styles)
-        // Extract just the body content
+        // 4. Extract body content
         const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
         if (bodyMatch && bodyMatch[1]) {
             htmlContent = bodyMatch[1];
         }
 
-        // Remove Google's inline styles that might conflict with TipTap
+        // 5. Clean up HTML while PRESERVING images, tables, and important formatting
+        // Remove problematic Google-specific classes but keep structure
         htmlContent = htmlContent
-            .replace(/style="[^"]*"/gi, '')
-            .replace(/class="[^"]*"/gi, '')
-            .replace(/<span[^>]*>([^<]*)<\/span>/gi, '$1')
-            .replace(/<p><\/p>/gi, '')
+            // Remove Google's class attributes (they reference missing stylesheets)
+            .replace(/\sclass="[^"]*"/gi, '')
+            // Clean up empty paragraphs
+            .replace(/<p[^>]*><\/p>/gi, '')
+            // Replace non-breaking spaces
             .replace(/&nbsp;/g, ' ')
+            // Clean up excessive whitespace
+            .replace(/\s+/g, ' ')
             .trim();
+
+        // 6. Fix image sources - Google Docs uses blob URLs that won't work externally
+        // Keep images but note they may need special handling
+        // Images from Google Docs are typically embedded as base64 or Google URLs
+        
+        // 7. Preserve table structure - just clean up Google-specific attributes
+        htmlContent = htmlContent
+            // Remove Google's border attribute but keep table structure
+            .replace(/<table[^>]*>/gi, (match) => {
+                return '<table style="border-collapse: collapse; width: 100%; margin: 1em 0;">';
+            })
+            // Style table cells
+            .replace(/<td([^>]*)>/gi, (match, attrs) => {
+                return '<td style="border: 1px solid #ddd; padding: 8px;"' + attrs + '>';
+            })
+            .replace(/<th([^>]*)>/gi, (match, attrs) => {
+                return '<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4; font-weight: bold;"' + attrs + '>';
+            });
+
+        // 8. Style images for proper display
+        htmlContent = htmlContent
+            .replace(/<img([^>]*)>/gi, (match, attrs) => {
+                // Preserve src but add max-width styling
+                if (!attrs.includes('style=')) {
+                    return '<img style="max-width: 100%; height: auto; margin: 1em 0;"' + attrs + '>';
+                }
+                return match;
+            });
 
         console.log(`Synced content from Google Doc: ${docId}`);
 
@@ -531,6 +562,311 @@ export const syncFromGoogleDocs = async (req, res) => {
 
     } catch (error) {
         console.error("Sync from Google Docs error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Create Draft as Google Doc
+ * Creates a Google Doc from HTML content in ScholarSync/Drafts folder
+ */
+export const createDraftDoc = async (req, res) => {
+    const { assignmentId, userId, content, title, courseName } = req.body;
+
+    try {
+        if (!content) {
+            return res.status(400).json({ error: "No content provided" });
+        }
+
+        // 1. Fetch User
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // 2. Setup OAuth
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET
+        );
+        oauth2Client.setCredentials({ refresh_token: user.refreshToken });
+
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+        // 3. Find or create ScholarSync/Drafts folder structure
+        const mainFolderName = "ScholarSync";
+        const draftsFolderName = "Drafts";
+        let mainFolderId, draftsFolderId;
+
+        // Find/create main folder
+        const mainFolderSearch = await drive.files.list({
+            q: `name='${mainFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            fields: 'files(id, name)',
+            spaces: 'drive'
+        });
+
+        if (mainFolderSearch.data.files?.length > 0) {
+            mainFolderId = mainFolderSearch.data.files[0].id;
+        } else {
+            const mainFolder = await drive.files.create({
+                requestBody: {
+                    name: mainFolderName,
+                    mimeType: 'application/vnd.google-apps.folder'
+                },
+                fields: 'id'
+            });
+            mainFolderId = mainFolder.data.id;
+        }
+
+        // Find/create Drafts subfolder
+        const draftsFolderSearch = await drive.files.list({
+            q: `name='${draftsFolderName}' and mimeType='application/vnd.google-apps.folder' and '${mainFolderId}' in parents and trashed=false`,
+            fields: 'files(id, name)',
+            spaces: 'drive'
+        });
+
+        if (draftsFolderSearch.data.files?.length > 0) {
+            draftsFolderId = draftsFolderSearch.data.files[0].id;
+        } else {
+            const draftsFolder = await drive.files.create({
+                requestBody: {
+                    name: draftsFolderName,
+                    mimeType: 'application/vnd.google-apps.folder',
+                    parents: [mainFolderId]
+                },
+                fields: 'id'
+            });
+            draftsFolderId = draftsFolder.data.id;
+        }
+
+        // 4. Create HTML document with proper styling
+        const safeTitle = (title || 'Draft').replace(/[/\\?%*:|"<>]/g, '-').substring(0, 100);
+        const htmlDocument = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${safeTitle}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1, h2, h3 { color: #1a1a2e; margin-top: 1.5em; }
+        h1 { font-size: 24px; border-bottom: 2px solid #4a4a8a; padding-bottom: 10px; }
+        h2 { font-size: 20px; color: #2d2d5a; }
+        h3 { font-size: 16px; color: #3d3d7a; }
+        p { margin: 1em 0; }
+        ul, ol { margin: 1em 0; padding-left: 2em; }
+        li { margin: 0.5em 0; }
+        code { background: #f4f4f8; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
+        pre { background: #f4f4f8; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        blockquote { border-left: 4px solid #4a4a8a; margin: 1em 0; padding-left: 1em; color: #555; }
+        table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f4f4f8; font-weight: bold; }
+        strong { color: #1a1a2e; }
+        img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+${content}
+</body>
+</html>`;
+
+        // 5. Upload HTML and convert to Google Docs
+        const bufferStream = new PassThrough();
+        bufferStream.end(Buffer.from(htmlDocument, 'utf-8'));
+
+        const docFile = await drive.files.create({
+            requestBody: {
+                name: safeTitle,
+                mimeType: 'application/vnd.google-apps.document',
+                parents: [draftsFolderId]
+            },
+            media: {
+                mimeType: 'text/html',
+                body: bufferStream
+            },
+            fields: 'id, webViewLink'
+        });
+
+        const docId = docFile.data.id;
+        const editLink = `https://docs.google.com/document/d/${docId}/edit`;
+
+        console.log(`Created draft Google Doc: ${safeTitle} in ${mainFolderName}/${draftsFolderName}`);
+
+        res.json({
+            success: true,
+            docId,
+            editLink,
+            previewLink: `https://docs.google.com/document/d/${docId}/preview`,
+            folderPath: `${mainFolderName}/${draftsFolderName}`
+        });
+
+    } catch (error) {
+        console.error("Create draft doc error:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Submit Doc to Classroom
+ * Can submit as Google Doc or convert to PDF
+ */
+export const submitDoc = async (req, res) => {
+    const { docId, assignmentId, userId, format, courseName, assignmentTitle } = req.body;
+
+    try {
+        if (!docId) {
+            return res.status(400).json({ error: "No document ID provided" });
+        }
+
+        // 1. Fetch User and Assignment
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const assignment = await Assignment.findById(assignmentId);
+        if (!assignment) {
+            return res.status(404).json({ error: "Assignment not found" });
+        }
+
+        // 2. Setup OAuth
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET
+        );
+        oauth2Client.setCredentials({ refresh_token: user.refreshToken });
+
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+        // 3. Setup folder structure
+        const mainFolderName = "ScholarSync";
+        const safeCourse = (courseName || assignment.courseName || "Course").replace(/[/\\?%*:|"<>]/g, '-').trim();
+        const safeAssignment = (assignmentTitle || assignment.title || "Assignment").replace(/[/\\?%*:|"<>]/g, '-').trim();
+
+        // Find/create main folder
+        let mainFolderId;
+        const mainFolderSearch = await drive.files.list({
+            q: `name='${mainFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            fields: 'files(id)',
+            spaces: 'drive'
+        });
+
+        if (mainFolderSearch.data.files?.length > 0) {
+            mainFolderId = mainFolderSearch.data.files[0].id;
+        } else {
+            const mainFolder = await drive.files.create({
+                requestBody: { name: mainFolderName, mimeType: 'application/vnd.google-apps.folder' },
+                fields: 'id'
+            });
+            mainFolderId = mainFolder.data.id;
+        }
+
+        // Find/create course folder
+        let courseFolderId;
+        const courseFolderSearch = await drive.files.list({
+            q: `name='${safeCourse}' and mimeType='application/vnd.google-apps.folder' and '${mainFolderId}' in parents and trashed=false`,
+            fields: 'files(id)',
+            spaces: 'drive'
+        });
+
+        if (courseFolderSearch.data.files?.length > 0) {
+            courseFolderId = courseFolderSearch.data.files[0].id;
+        } else {
+            const courseFolder = await drive.files.create({
+                requestBody: { name: safeCourse, mimeType: 'application/vnd.google-apps.folder', parents: [mainFolderId] },
+                fields: 'id'
+            });
+            courseFolderId = courseFolder.data.id;
+        }
+
+        // Find/create assignment folder
+        let assignmentFolderId;
+        const assignmentFolderSearch = await drive.files.list({
+            q: `name='${safeAssignment}' and mimeType='application/vnd.google-apps.folder' and '${courseFolderId}' in parents and trashed=false`,
+            fields: 'files(id)',
+            spaces: 'drive'
+        });
+
+        if (assignmentFolderSearch.data.files?.length > 0) {
+            assignmentFolderId = assignmentFolderSearch.data.files[0].id;
+        } else {
+            const assignmentFolder = await drive.files.create({
+                requestBody: { name: safeAssignment, mimeType: 'application/vnd.google-apps.folder', parents: [courseFolderId] },
+                fields: 'id'
+            });
+            assignmentFolderId = assignmentFolder.data.id;
+        }
+
+        let uploadedFileId, uploadedFileName;
+        const timestamp = new Date().toISOString().split('T')[0];
+
+        if (format === 'pdf') {
+            // 4a. Export as PDF and upload
+            const pdfResponse = await drive.files.export({
+                fileId: docId,
+                mimeType: 'application/pdf'
+            }, { responseType: 'arraybuffer' });
+
+            const pdfBuffer = Buffer.from(pdfResponse.data);
+            const pdfStream = new PassThrough();
+            pdfStream.end(pdfBuffer);
+
+            uploadedFileName = `${safeAssignment}_Solution_${timestamp}.pdf`;
+
+            const pdfFile = await drive.files.create({
+                requestBody: {
+                    name: uploadedFileName,
+                    parents: [assignmentFolderId]
+                },
+                media: {
+                    mimeType: 'application/pdf',
+                    body: pdfStream
+                },
+                fields: 'id, webViewLink'
+            });
+
+            uploadedFileId = pdfFile.data.id;
+
+        } else {
+            // 4b. Copy the Google Doc to the submission folder
+            uploadedFileName = `${safeAssignment}_Solution_${timestamp}`;
+
+            const copiedFile = await drive.files.copy({
+                fileId: docId,
+                requestBody: {
+                    name: uploadedFileName,
+                    parents: [assignmentFolderId]
+                },
+                fields: 'id, webViewLink'
+            });
+
+            uploadedFileId = copiedFile.data.id;
+        }
+
+        // 5. Update assignment status
+        assignment.status = 'submitted';
+        assignment.submittedAt = new Date();
+        await assignment.save();
+
+        const folderPath = `${mainFolderName}/${safeCourse}/${safeAssignment}`;
+
+        console.log(`Submitted ${format.toUpperCase()}: ${uploadedFileName} to ${folderPath}`);
+
+        // 6. Build Classroom link
+        const classroomLink = `https://classroom.google.com/c/${assignment.courseId}/a/${assignment.classroomId}/submissions/by-status/and-target/all`;
+
+        res.json({
+            success: true,
+            fileId: uploadedFileId,
+            fileName: uploadedFileName,
+            format,
+            folderPath,
+            classroomLink
+        });
+
+    } catch (error) {
+        console.error("Submit doc error:", error);
         res.status(500).json({ error: error.message });
     }
 };

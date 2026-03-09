@@ -6,7 +6,9 @@ import {
     getAssignmentDetailsAndExtract,
     submitToClassroom,
     openInGoogleDocs,
-    syncFromGoogleDocs
+    syncFromGoogleDocs,
+    createDraftDoc,
+    submitDoc
 } from '../controllers/classroomController.js';
 
 const router = express.Router();
@@ -18,5 +20,7 @@ router.post('/assignments/:assignmentId/extract', getAssignmentDetailsAndExtract
 router.post('/submit', submitToClassroom);
 router.post('/open-in-docs', openInGoogleDocs);
 router.post('/sync-from-docs', syncFromGoogleDocs);
+router.post('/create-draft-doc', createDraftDoc);
+router.post('/submit-doc', submitDoc);
 
 export default router;
