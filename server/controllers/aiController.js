@@ -269,3 +269,68 @@ export const clearChatHistory = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+/**
+ * Save a solution generated client-side
+ * This endpoint stores solutions that were generated in the browser
+ */
+export const saveClientSolution = async (req, res) => {
+    try {
+        const { assignmentId, mode, content, generatedAt, source } = req.body;
+        
+        if (!assignmentId || !mode || !content) {
+            return res.status(400).json({ error: 'Missing required fields: assignmentId, mode, content' });
+        }
+        
+        // Update or create solution
+        const solution = await Solution.findOneAndUpdate(
+            { assignmentId, mode },
+            {
+                assignmentId,
+                mode,
+                content,
+                generatedAt: generatedAt || new Date(),
+                source: source || 'client-side',
+                updatedAt: new Date(),
+            },
+            { upsert: true, new: true }
+        );
+        
+        res.json({ 
+            success: true, 
+            solutionId: solution._id,
+            mode: solution.mode,
+        });
+    } catch (error) {
+        console.error('Save client solution error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Save extracted content for an assignment
+ * This caches extracted text so we don't need to re-extract
+ */
+export const saveExtractedContent = async (req, res) => {
+    try {
+        const { assignmentId, content, pageCount, hasImages, tokenEstimate } = req.body;
+        
+        if (!assignmentId || !content) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        await Assignment.findByIdAndUpdate(assignmentId, {
+            'extractedContent.extractedContent': content,
+            'extractedContent.pageCount': pageCount,
+            'extractedContent.hasImages': hasImages,
+            'extractedContent.tokenEstimate': tokenEstimate,
+            'extractedContent.extractedAt': new Date(),
+            'extractedContent.source': 'client-side',
+        });
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Save extracted content error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};

@@ -220,12 +220,15 @@ const MenuBar = ({ editor }) => {
   );
 };
 
-const Editor = ({ initialContent, solutionId, onRegenerate }) => {
+const Editor = ({ initialContent, solutionId, assignmentId, onRegenerate }) => {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [openingDocs, setOpeningDocs] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [googleDocId, setGoogleDocId] = useState(null);
+  
+  // Support both solutionId (legacy) and assignmentId (new client-side flow)
+  const effectiveAssignmentId = assignmentId || solutionId;
 
   const editor = useEditor({
     extensions: [
@@ -256,7 +259,7 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
 
     try {
       const res = await api.post('/classroom/open-in-docs', {
-        solutionId,
+        assignmentId: effectiveAssignmentId,
         userId: user._id,
         content: editor.getHTML()
       });
@@ -315,7 +318,7 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
 
     try {
       const res = await api.post('/classroom/submit', {
-        solutionId,
+        assignmentId: effectiveAssignmentId,
         userId: user._id,
         editedContent: editor.getHTML()
       });
@@ -323,12 +326,12 @@ const Editor = ({ initialContent, solutionId, onRegenerate }) => {
       // Show success with folder path
       toast.success(
         `Saved to Drive: ${res.data.folderPath}`, 
-        { id: toastId, duration: 5000 }
+        { id: toastId, duration: 3000 }
       );
       
-      // Open classroom link for manual submission
+      // Open Classroom for manual attachment
       if (res.data.classroomLink) {
-        toast(`Opening Google Classroom for manual attachment...`, { 
+        toast(`Opening Google Classroom to attach your file...`, { 
           icon: '📎',
           duration: 3000 
         });

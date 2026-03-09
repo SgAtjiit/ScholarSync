@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import useClientSideAI from "../hooks/useClientSideAI";
 import GlassCard from "../components/common/GlassCard";
 import AIAssistant from "../features/workspace/AIAssistant";
 import Editor from "../features/workspace/Editor";
@@ -11,7 +12,8 @@ import PDFViewer from "../features/workspace/PDFViewer";
 import ChatWithAssignment from "../features/workspace/ChatWithAssignment";
 import QuizOptionsModal from "../components/common/QuizOptionsModal";
 import WorkspaceGuide from "../components/workspace/WorkspaceGuide";
-import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout, RefreshCw } from "lucide-react";
+import ProcessingStatus from "../components/common/ProcessingStatus";
+import { FileText, ExternalLink, Loader2, Sparkles, Link as LinkIcon, FileIcon, MessageSquare, Youtube, Layout, RefreshCw, Zap, Download, BarChart2 } from "lucide-react";
 import toast from 'react-hot-toast';
 import Button from "../components/common/Button";
 import useSEO from "../hooks/useSEO";
@@ -79,14 +81,15 @@ const Workspace = () => {
   });
 
   const [assignment, setAssignment] = useState(state?.assignment || null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState('explain');
-  const [solutions, setSolutions] = useState({});
-  const [generating, setGenerating] = useState(false);
   const [activeTab, setActiveTab] = useState('ai');
   const [selectedDocId, setSelectedDocId] = useState(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
+
+  // Client-side AI hook - THIS IS THE KEY CHANGE
+  const clientAI = useClientSideAI({ userId: user?._id });
 
   const getMaterialLink = (m) => {
     if (m.driveFile) return m.driveFile.driveFile?.alternateLink || m.driveFile.alternateLink;
@@ -148,119 +151,156 @@ const Workspace = () => {
     setSelectedDocId(allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id);
   }
 
+  // Load assignment data only - NO backend extraction
   useEffect(() => {
     const init = async () => {
       try {
         setLoading(true);
-        const res = await api.post(`/classroom/assignments/${assignmentId}/extract`, { userId: user._id });
-        setAssignment(res.data.assignment);
+        
+        // Just get assignment data without extraction
+        const res = await api.get(`/classroom/assignments/${user._id}`);
+        const foundAssignment = res.data?.find?.(a => a._id === assignmentId);
+        
+        if (foundAssignment) {
+          setAssignment(foundAssignment);
+          
+          // Set default selected doc
+          const docs = getDocumentMaterials(foundAssignment.materials);
+          if (docs.length > 0 && !selectedDocId) {
+            const firstDocId = docs[0].driveFile?.driveFile?.id || docs[0].driveFile?.id;
+            setSelectedDocId(firstDocId);
+          }
+        } else {
+          // Fallback: try direct fetch
+          const directRes = await api.get(`/ai/solution/${assignmentId}`);
+          if (directRes.data?.assignment) {
+            setAssignment(directRes.data.assignment);
+          }
+        }
+
         setLoading(false);
-
-        // Show success message
-        if (res.data.message === "Extraction complete") {
-          toast.success("Ready for AI! Text extraction completed.");
-        }
-
-        // Show detailed warnings about files that couldn't be accessed
-        if (res.data.warnings && res.data.warnings.length > 0) {
-          res.data.warnings.forEach((warning, idx) => {
-            // Delay each toast to avoid flooding
-            setTimeout(() => {
-              const lowerWarning = warning.toLowerCase();
-              let icon = '⚠️';
-              let message = warning;
-              
-              // Format message based on error type
-              if (lowerWarning.includes('encrypt') || lowerWarning.includes('password')) {
-                icon = '🔒';
-                message = 'PDF is encrypted/password-protected';
-              } else if (lowerWarning.includes('access denied') || lowerWarning.includes('permission')) {
-                icon = '🚫';
-                message = 'No permission to access file';
-              } else if (lowerWarning.includes('external')) {
-                icon = '🏢';
-                message = 'File from external organization';
-              } else if (lowerWarning.includes('not found')) {
-                icon = '📄';
-                message = 'File not found or deleted';
-              }
-              
-              toast(message, {
-                icon,
-                duration: 6000,
-                style: {
-                  border: '1px solid #f97316',
-                  background: '#18181b',
-                  color: '#fdba74',
-                }
-              });
-            }, idx * 1000);
-          });
-        }
-
-        const draftRes = await api.get(`/ai/solutions/${assignmentId}?preferredMode=draft`);
-        if (draftRes.data) {
-          setSolutions(prev => ({ ...prev, [draftRes.data.mode]: draftRes.data }));
-          if (draftRes.data.mode === 'draft') setActiveMode('draft');
-        }
       } catch (err) {
-        console.error("Extraction error:", err);
+        console.error("Init error:", err);
         setLoading(false);
-        const { message } = parseErrorMessage(err);
-        toast.error(message);
+        // If we have state assignment, use that
+        if (state?.assignment) {
+          setAssignment(state.assignment);
+        } else {
+          toast.error("Failed to load assignment");
+        }
       }
     };
     if (user) init();
   }, [assignmentId, user]);
 
+  // Auto-load from cache when selectedDocId changes
+  useEffect(() => {
+    if (selectedDocId && user?._id && !clientAI.isExtracting && !clientAI.extractedContent) {
+      // Try to load from cache automatically
+      clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
+        .then(result => {
+          if (result.loaded) {
+            toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
+          }
+        });
+    }
+  }, [selectedDocId, user?._id, assignmentId]);
 
-  const handleGenerate = async (mode, forceRegenerate = false, quizOptions = null) => {
+  // Extract content from selected document - CLIENT-SIDE with caching
+  const handleExtract = useCallback(async (forceRefresh = false) => {
+    if (!selectedDocId) {
+      toast.error("No document selected");
+      return;
+    }
+
+    if (!clientAI.hasApiKey) {
+      toast.error("Please set your Groq API Key in Settings first!");
+      return;
+    }
+
+    const selectedMaterial = allDocMaterials.find(m => {
+      const fileId = m.driveFile?.driveFile?.id || m.driveFile?.id;
+      return fileId === selectedDocId;
+    });
+
+    const fileName = getMaterialTitle(selectedMaterial) || 'document';
+
+    toast.loading(forceRefresh ? "Re-extracting document..." : "Loading document...", { id: 'extract' });
+
+    try {
+      const result = await clientAI.extractContent({
+        fileId: selectedDocId,
+        fileName,
+        assignmentId,
+        useVision: true,
+        forceRefresh,
+      });
+
+      if (clientAI.isCached && !forceRefresh) {
+        toast.success(`Loaded from cache (${result.pageCount} pages)`, { id: 'extract' });
+      } else {
+        toast.success(`Extracted ${result.pageCount} pages (${Math.round(result.tokenEstimate / 1000)}k tokens)`, { id: 'extract' });
+      }
+
+    } catch (error) {
+      toast.error(error.message, { id: 'extract' });
+    }
+  }, [selectedDocId, clientAI, allDocMaterials, assignmentId]);
+
+  // Generate AI content - CLIENT-SIDE
+  const handleGenerate = useCallback(async (mode, forceRegenerate = false, quizOptions = null) => {
     setActiveMode(mode);
     
-    // If multiple documents exist, show selector
-    if (hasMultipleDocs && !selectedDocId) {
-      toast.error("Please select a document first from the Document Viewer tab");
-      setActiveTab('pdf');
+    // Check if content already exists
+    if (clientAI.hasContent(mode) && !forceRegenerate) {
       return;
     }
 
-    if (solutions[mode] && !forceRegenerate) return;
-
-    if (!localStorage.getItem('groq_api_key')) {
-      toast.error("You need to set your Groq API Key in Settings first!");
+    // API key check
+    if (!clientAI.hasApiKey) {
+      toast.error("Please set your Groq API Key in Settings first!");
       return;
     }
 
-    // For quiz mode, show the options modal instead of alert
+    // Extract content first if not done
+    if (!clientAI.extractedContent) {
+      toast.error("Please extract document content first using the Extract button");
+      return;
+    }
+
+    // Quiz options modal
     if (mode === 'quiz' && !quizOptions) {
       setPendingQuizRegenerate(forceRegenerate);
       setShowQuizModal(true);
       return;
     }
 
-    setGenerating(true);
-    const toastId = toast.loading(forceRegenerate ? "Regenerating with AI..." : "Generating with AI...");
+    const toastId = toast.loading(
+      forceRegenerate ? "Regenerating with AI..." : "Generating with AI..."
+    );
 
     try {
-      const res = await api.post('/ai/generate', {
-        assignmentId, 
-        userId: user._id, 
-        mode, 
-        questionCount: quizOptions?.questionCount || 5,
-        difficulty: quizOptions?.difficulty || 'medium',
-        questionType: quizOptions?.questionType || 'mixed',
-        selectedDocId
+      const result = await clientAI.generate({
+        mode,
+        quizOptions: mode === 'quiz' ? quizOptions : undefined,
+        assignmentTitle: assignment?.title,
+        courseName: assignment?.courseName,
+        forceRefresh: forceRegenerate,
       });
-      setSolutions(prev => ({ ...prev, [mode]: res.data }));
-      toast.success(forceRegenerate ? "Content regenerated!" : "Content generated successfully!", { id: toastId });
-    } catch (err) {
-      console.error('Generation error:', err);
-      const { message } = parseErrorMessage(err);
-      toast.error(message, { id: toastId });
-    } finally {
-      setGenerating(false);
+
+      if (result.cached) {
+        toast.success(`Loaded ${mode} from cache!`, { id: toastId });
+      } else {
+        toast.success(
+          `Generated ${mode}! (${result.tokens?.output || 0} tokens used)`, 
+          { id: toastId }
+        );
+      }
+
+    } catch (error) {
+      toast.error(error.message, { id: toastId });
     }
-  };
+  }, [clientAI, assignment, assignmentId]);
 
   const handleRegenerate = () => {
     handleGenerate(activeMode, true);
@@ -272,20 +312,33 @@ const Workspace = () => {
     handleGenerate('quiz', pendingQuizRegenerate, options);
   };
 
-  const currentSolution = solutions[activeMode];
+  // Get current solution from client-side state
+  const currentSolution = clientAI.getContent(activeMode);
+  const generating = clientAI.isGenerating;
 
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center text-zinc-500 gap-3">
         <Loader2 className="w-12 h-12 animate-spin text-indigo-500" />
-        <p className="text-lg font-medium text-zinc-300">Extracting assignment content...</p>
-        <p className="text-sm text-zinc-600">Please wait while we analyze the materials</p>
+        <p className="text-lg font-medium text-zinc-300">Loading assignment...</p>
+        <p className="text-sm text-zinc-600">Please wait while we fetch the details</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 lg:gap-6 min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] px-2 sm:px-0">
+      {/* Processing Status Overlay - CLIENT-SIDE FEEDBACK */}
+      <ProcessingStatus
+        isExtracting={clientAI.isExtracting}
+        extractionProgress={clientAI.extractionProgress}
+        extractionError={clientAI.extractionError}
+        isGenerating={clientAI.isGenerating}
+        generatingMode={clientAI.generatingMode}
+        generationError={clientAI.generationError}
+        rateLimiterState={clientAI.rateLimiterState}
+      />
+
       {/* Left Sidebar - Collapsible on mobile */}
       <div className="lg:col-span-4 flex flex-col gap-4 lg:gap-6 lg:h-full lg:overflow-hidden">
         <GlassCard className="flex-shrink-0 flex flex-col gap-3 sm:gap-4 max-h-[calc(100vh-12rem)] overflow-y-auto custom-scrollbar" hoverEffect={false}>
@@ -293,6 +346,52 @@ const Workspace = () => {
             <h1 className="text-base sm:text-lg font-bold text-white mb-1 sm:mb-2 line-clamp-2">{assignment?.title}</h1>
             <p className="text-[10px] sm:text-xs text-zinc-500">{assignment?.courseName}</p>
           </div>
+
+          {/* Extract Button - NEW CLIENT-SIDE EXTRACTION with caching */}
+          <div className="flex gap-2 flex-shrink-0">
+            <Button
+              onClick={() => handleExtract(!!clientAI.extractedContent)}
+              disabled={clientAI.isExtracting || clientAI.isLoadingCache || !selectedDocId}
+              className="flex-1"
+              size="sm"
+            >
+              {clientAI.isExtracting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-2" />
+                  Extracting...
+                </>
+              ) : clientAI.isLoadingCache ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-2" />
+                  Loading cache...
+                </>
+              ) : clientAI.extractedContent ? (
+                <>
+                  <RefreshCw size={14} className="mr-2" />
+                  Re-Extract
+                </>
+              ) : (
+                <>
+                  <Download size={14} className="mr-2" />
+                  Extract Content
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Extraction Status */}
+          {clientAI.extractedContent && (
+            <div className="p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-xl flex-shrink-0">
+              <div className="flex items-center gap-2 text-green-400 text-xs">
+                <Zap size={12} />
+                <span>
+                  {clientAI.extractedContent.pageCount} pages 
+                  {clientAI.isCached && ' (cached)'} 
+                  ({Math.round(clientAI.extractedContent.tokenEstimate / 1000)}k tokens)
+                </span>
+              </div>
+            </div>
+          )}
           
           {/* Materials - Scrollable */}
           <div className="flex flex-col gap-2 flex-shrink-0">
@@ -389,7 +488,12 @@ const Workspace = () => {
         
         {/* AI Tools - Horizontal scroll on mobile, vertical on desktop */}
         <div className="lg:flex-1 lg:overflow-y-auto custom-scrollbar">
-          <AIAssistant activeMode={activeMode} onGenerate={handleGenerate} generating={generating} hasSolution={(mode) => !!solutions[mode]} />
+          <AIAssistant 
+            activeMode={activeMode} 
+            onGenerate={handleGenerate} 
+            generating={clientAI.isGenerating} 
+            hasSolution={(mode) => clientAI.hasContent(mode)} 
+          />
         </div>
       </div>
 
@@ -421,8 +525,15 @@ const Workspace = () => {
               {!currentSolution && !generating && (
                 <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 h-full p-6">
                   <Sparkles className="w-16 h-16 mb-4 text-zinc-700" />
-                  <p className="text-lg font-medium text-zinc-300 mb-2">Ready to generate!</p>
-                  <p className="text-sm text-zinc-500 text-center max-w-md mb-6">We've analyzed your assignment materials. Select an AI tool from the left panel to get started.</p>
+                  <p className="text-lg font-medium text-zinc-300 mb-2">
+                    {clientAI.extractedContent ? "Ready to generate!" : "Extract content first"}
+                  </p>
+                  <p className="text-sm text-zinc-500 text-center max-w-md mb-6">
+                    {clientAI.extractedContent 
+                      ? "Select an AI tool from the left panel to get started."
+                      : "Click the 'Extract Content' button to analyze the document in your browser."
+                    }
+                  </p>
                   
                   {/* Quick start tips */}
                   <div className="bg-zinc-800/50 rounded-lg p-4 max-w-md space-y-3 border border-zinc-700">
@@ -430,11 +541,11 @@ const Workspace = () => {
                     <ul className="text-xs text-zinc-400 space-y-2">
                       <li className="flex gap-2">
                         <span>1️⃣</span>
-                        <span>Click <strong className="text-indigo-400">Explain</strong> to understand the assignment concepts</span>
+                        <span><strong className="text-indigo-400">Extract</strong> the document content first (runs in browser)</span>
                       </li>
                       <li className="flex gap-2">
                         <span>2️⃣</span>
-                        <span>Try <strong className="text-indigo-400">Quiz</strong> to test your understanding</span>
+                        <span>Click <strong className="text-indigo-400">Explain</strong> to understand concepts</span>
                       </li>
                       <li className="flex gap-2">
                         <span>3️⃣</span>
@@ -447,14 +558,14 @@ const Workspace = () => {
               {generating && (
                 <div className="flex-1 flex flex-col items-center justify-center text-indigo-400 animate-pulse h-full">
                   <Sparkles className="w-12 h-12 mb-4" />
-                  <p className="mb-2">Generating Solution...</p>
-                  <p className="text-xs text-zinc-500">This may take a few seconds</p>
+                  <p className="mb-2">Generating {clientAI.generatingMode}...</p>
+                  <p className="text-xs text-zinc-500">Processing directly in your browser</p>
                 </div>
               )}
               {currentSolution && !generating && (
                 <>
-                  {activeMode === 'quiz' && (<div className="h-full overflow-y-auto custom-scrollbar"><Quiz content={currentSolution.content} onRegenerate={handleRegenerate} /></div>)}
-                  {activeMode === 'flashcards' && (<div className="h-full overflow-y-auto custom-scrollbar"><Flashcards content={currentSolution.content} onRegenerate={handleRegenerate} /></div>)}
+                  {activeMode === 'quiz' && (<div className="h-full overflow-y-auto custom-scrollbar"><Quiz content={currentSolution} onRegenerate={handleRegenerate} /></div>)}
+                  {activeMode === 'flashcards' && (<div className="h-full overflow-y-auto custom-scrollbar"><Flashcards content={currentSolution} onRegenerate={handleRegenerate} /></div>)}
                   {activeMode === 'explain' && (
                     <div className="h-full overflow-y-auto custom-scrollbar p-8">
                       <div className="flex justify-end mb-4">
@@ -462,16 +573,22 @@ const Workspace = () => {
                           <RefreshCw size={14} className="mr-2" /> Regenerate
                         </Button>
                       </div>
-                      <div className="prose prose-invert prose-indigo max-w-none" dangerouslySetInnerHTML={{ __html: currentSolution.content }} />
+                      <div className="prose prose-invert prose-indigo max-w-none" dangerouslySetInnerHTML={{ __html: currentSolution }} />
                     </div>
                   )}
-                  {activeMode === 'draft' && (<Editor initialContent={currentSolution.editedContent || currentSolution.content} solutionId={currentSolution._id} onRegenerate={handleRegenerate} />)}
+                  {activeMode === 'draft' && (<Editor initialContent={currentSolution} assignmentId={assignmentId} onRegenerate={handleRegenerate} />)}
                 </>
               )}
             </>
           )}
-          {activeTab === 'pdf' && <PDFViewer pdfFileId={docFileId} />}
-          {activeTab === 'chat' && <ChatWithAssignment assignmentId={assignmentId} assignmentTitle={assignment?.title} />}
+          {activeTab === 'pdf' && <PDFViewer pdfFileId={selectedDocId || docFileId} />}
+          {activeTab === 'chat' && (
+            <ChatWithAssignment 
+              assignmentId={assignmentId} 
+              assignmentTitle={assignment?.title}
+              extractedContent={clientAI.extractedContent?.content}
+            />
+          )}
         </div>
       </div>
 

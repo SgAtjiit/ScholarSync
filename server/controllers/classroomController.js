@@ -125,40 +125,58 @@ export const getAssignmentDetailsAndExtract = async (req, res) => {
  * Organizes files in: ScholarSync/CourseName/AssignmentTitle/
  */
 export const submitToClassroom = async (req, res) => {
-    const { solutionId, userId, editedContent } = req.body;
+    const { solutionId, assignmentId: directAssignmentId, userId, editedContent, content } = req.body;
 
     try {
         // 1. Fetch Data
         const user = await User.findById(userId);
-        const solution = await Solution.findById(solutionId);
-        
-        if (!solution) {
-            return res.status(404).json({ error: "Solution not found" });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
         }
         
-        const assignment = await Assignment.findById(solution.assignmentId);
-        if (!user || !assignment) {
-            return res.status(404).json({ error: "User or Assignment not found" });
+        let assignment;
+        let contentToSubmit;
+        
+        // Support both legacy (solutionId) and new (assignmentId + content) flow
+        if (solutionId) {
+            // Legacy flow: get content from Solution document
+            const solution = await Solution.findById(solutionId);
+            
+            if (!solution) {
+                return res.status(404).json({ error: "Solution not found" });
+            }
+            
+            assignment = await Assignment.findById(solution.assignmentId);
+            
+            // Validate that only draft mode can be submitted
+            const solutionMode = solution.mode || 'draft';
+            if (solutionMode !== 'draft') {
+                return res.status(400).json({ 
+                    error: `Cannot submit ${solutionMode} mode. Only 'draft' mode solutions can be submitted.` 
+                });
+            }
+            
+            contentToSubmit = editedContent || solution.editedContent || solution.content;
+            
+            // Save editedContent to solution if provided
+            if (editedContent && editedContent !== solution.content) {
+                solution.editedContent = editedContent;
+                await solution.save();
+            }
+        } else if (directAssignmentId) {
+            // New flow: direct assignment ID + content (client-side AI)
+            assignment = await Assignment.findById(directAssignmentId);
+            contentToSubmit = editedContent || content;
+        } else {
+            return res.status(400).json({ error: "Either solutionId or assignmentId is required" });
         }
 
-        // 2. Validate that only draft mode can be submitted
-        const solutionMode = solution.mode || 'draft';
-        if (solutionMode !== 'draft') {
-            return res.status(400).json({ 
-                error: `Cannot submit ${solutionMode} mode. Only 'draft' mode solutions can be submitted.` 
-            });
+        if (!assignment) {
+            return res.status(404).json({ error: "Assignment not found" });
         }
-
-        // 3. Determine content to use
-        const contentToSubmit = editedContent || solution.editedContent || solution.content;
+        
         if (!contentToSubmit) {
             return res.status(400).json({ error: "No content available to submit" });
-        }
-
-        // Save editedContent to solution if provided
-        if (editedContent && editedContent !== solution.content) {
-            solution.editedContent = editedContent;
-            await solution.save();
         }
 
         // 4. Setup OAuth
@@ -332,7 +350,7 @@ export const submitToClassroom = async (req, res) => {
  * Uses Drive API to upload HTML and convert to Google Docs format
  */
 export const openInGoogleDocs = async (req, res) => {
-    const { solutionId, userId, content } = req.body;
+    const { solutionId, assignmentId: directAssignmentId, userId, content } = req.body;
 
     try {
         // 1. Fetch User
@@ -341,11 +359,19 @@ export const openInGoogleDocs = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        // 2. Fetch solution and assignment for naming
+        // 2. Fetch assignment for naming
         let docName = `Solution_${new Date().toISOString().split('T')[0]}`;
         let assignmentTitle = "Assignment";
         
-        if (solutionId) {
+        if (directAssignmentId) {
+            // New flow: direct assignment ID
+            const assignment = await Assignment.findById(directAssignmentId);
+            if (assignment) {
+                assignmentTitle = assignment.title || "Assignment";
+                docName = `${assignmentTitle.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 50)}_Solution`;
+            }
+        } else if (solutionId) {
+            // Legacy flow: get assignment from solution
             const solution = await Solution.findById(solutionId);
             if (solution) {
                 const assignment = await Assignment.findById(solution.assignmentId);

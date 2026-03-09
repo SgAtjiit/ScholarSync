@@ -7,6 +7,8 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import classroomRoutes from './routes/classroomRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import streamRoutes from './routes/streamRoutes.js';
+import cacheRoutes from './routes/cacheRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -29,6 +31,8 @@ app.get('/', (req, res) => res.send('ScholarSync API is running...'));
 app.use('/api/auth', authRoutes);
 app.use('/api/classroom', classroomRoutes); // Handles Courses & Assignments
 app.use('/api/ai', aiRoutes);               // Handles Generation & Solutions
+app.use('/api/stream', streamRoutes);       // File streaming proxy (memory-efficient)
+app.use('/api/cache', cacheRoutes);         // Extraction & generation caching
 
 const PORT = process.env.PORT || 5000;
 

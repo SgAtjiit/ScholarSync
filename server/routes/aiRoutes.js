@@ -1,5 +1,16 @@
 import express from 'express';
-import { generateAiSolution, getSolution, chatWithAssignment, chatWithAssignmentStream, explainConceptHandler, getChatHistory, saveChatMessage, clearChatHistory } from '../controllers/aiController.js';
+import { 
+    generateAiSolution, 
+    getSolution, 
+    chatWithAssignment, 
+    chatWithAssignmentStream, 
+    explainConceptHandler, 
+    getChatHistory, 
+    saveChatMessage, 
+    clearChatHistory,
+    saveClientSolution,
+    saveExtractedContent
+} from '../controllers/aiController.js';
 
 const router = express.Router();
 
@@ -14,5 +25,9 @@ router.post('/chat-stream', chatWithAssignmentStream);
 router.get('/chat-history/:assignmentId', getChatHistory);
 router.post('/chat-history', saveChatMessage);
 router.delete('/chat-history/:assignmentId', clearChatHistory);
+
+// Client-side AI persistence routes
+router.post('/save-solution', saveClientSolution);
+router.post('/save-extracted', saveExtractedContent);
 
 export default router;

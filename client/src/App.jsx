@@ -11,7 +11,9 @@ import Profile from "./pages/Profile";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import React, { useEffect } from "react"; // ✨ ADDED: useEffect import
-import { Toaster, toast } from 'react-hot-toast'; // ✨ ADDED: toast import
+import { Toaster, toast } from "react-hot-toast"; // ✨ ADDED: toast import
+// In your routes file
+import ClientSideWorkspace from "./pages/ClientSideWorkspace";
 
 // ✨ MODIFIED: ProtectedRoute with Login Alert
 const ProtectedRoute = ({ children }) => {
@@ -21,12 +23,17 @@ const ProtectedRoute = ({ children }) => {
     if (!loading && !user) {
       // Jab koi bina login kiye access karega toh ye message aayega
       toast.error(" Please login to access the Dashboard.", {
-        id: 'auth-error', // ID prevents duplicate toasts
+        id: "auth-error", // ID prevents duplicate toasts
       });
     }
   }, [user, loading]);
 
-  if (loading) return <div className="h-screen w-full flex items-center justify-center bg-[#09090b] text-zinc-500">Initializing ScholarSync...</div>;
+  if (loading)
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#09090b] text-zinc-500">
+        Initializing ScholarSync...
+      </div>
+    );
 
   if (!user) return <Navigate to="/login" />;
 
@@ -43,14 +50,14 @@ function App() {
           position="top-center"
           toastOptions={{
             style: {
-              background: '#18181b',
-              color: '#fff',
-              border: '1px solid #27272a',
+              background: "#18181b",
+              color: "#fff",
+              border: "1px solid #27272a",
             },
             success: {
               iconTheme: {
-                primary: '#4f46e5',
-                secondary: '#fff',
+                primary: "#4f46e5",
+                secondary: "#fff",
               },
             },
           }}
@@ -64,23 +71,37 @@ function App() {
           <Route path="/terms-of-service" element={<TermsOfService />} />
 
           {/* Protected Routes */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/workspace/:assignmentId" element={
-            <ProtectedRoute>
-              <Workspace />
-            </ProtectedRoute>
-          } />
+          {/* <Route
+            path="/workspace/:assignmentId"
+            element={
+              <ProtectedRoute>
+                <ClientSideWorkspace />
+              </ProtectedRoute>
+            }
+          /> */}
+          <Route path="/workspace/:assignmentId" element={ 
+              <ProtectedRoute> 
+               <Workspace />
+             </ProtectedRoute>
+            } />
         </Routes>
       </AuthProvider>
     </GoogleOAuthProvider>

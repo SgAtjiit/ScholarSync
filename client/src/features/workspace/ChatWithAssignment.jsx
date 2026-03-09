@@ -3,6 +3,7 @@ import { Send, Loader2, MessageSquare, Sparkles, StopCircle, Trash2, History } f
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { chatWithContentStream } from '../../services/aiGenerationService';
 
 // Helper to parse error and extract rate limit info
 const parseErrorMessage = (errorText) => {
@@ -76,15 +77,19 @@ const parseErrorMessage = (errorText) => {
     };
 };
 
-const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
+const ChatWithAssignment = ({ assignmentId, assignmentTitle, extractedContent }) => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [streamingMessage, setStreamingMessage] = useState('');
+    const [chatHistory, setChatHistory] = useState([]);
     const abortControllerRef = useRef(null);
     const messagesEndRef = useRef(null);
+
+    // Use client-side chat when extractedContent is provided
+    const useClientSide = Boolean(extractedContent);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -154,6 +159,7 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
                 role: 'ai',
                 content: `Hi! I'm your AI assistant for "${assignmentTitle || 'this assignment'}". Chat history cleared. Ask me anything!`
             }]);
+            setChatHistory([]); // Reset client-side chat history
             toast.success('Chat history cleared');
         } catch (error) {
             console.error('Failed to clear history:', error);
@@ -186,10 +192,14 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
             return;
         }
 
-        const userMessage = { role: 'user', content: input };
+        const userQuestion = input;
+        const userMessage = { role: 'user', content: userQuestion };
         setMessages(prev => [...prev, userMessage]);
         // Save user message to history
         saveMessageToHistory(userMessage);
+        
+        // Update chat history for context
+        const updatedHistory = [...chatHistory, { role: 'user', content: userQuestion }];
         
         setInput('');
         setLoading(true);
@@ -199,64 +209,87 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle }) => {
         abortControllerRef.current = new AbortController();
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/ai/chat-stream`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-groq-api-key': apiKey
-                },
-                body: JSON.stringify({
-                    assignmentId,
-                    question: input,
-                    userId: user._id
-                }),
-                signal: abortControllerRef.current.signal
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to get response');
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
             let fullMessage = '';
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+            if (useClientSide) {
+                // Client-side chat using extracted content directly
+                await chatWithContentStream(
+                    extractedContent,
+                    userQuestion,
+                    chatHistory,
+                    (chunk) => {
+                        fullMessage += chunk;
+                        setStreamingMessage(fullMessage);
+                    }
+                );
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+                const aiMessage = { role: 'ai', content: fullMessage };
+                setMessages(prev => [...prev, aiMessage]);
+                setStreamingMessage('');
+                saveMessageToHistory(aiMessage);
+                
+                // Update chat history with both messages
+                setChatHistory([...updatedHistory, { role: 'assistant', content: fullMessage }]);
+            } else {
+                // Backend chat (fallback)
+                const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/ai/chat-stream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-groq-api-key': apiKey
+                    },
+                    body: JSON.stringify({
+                        assignmentId,
+                        question: userQuestion,
+                        userId: user._id
+                    }),
+                    signal: abortControllerRef.current.signal
+                });
 
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-                            
-                            if (data.error) {
-                                // Parse error for rate limit info
-                                const parsed = parseErrorMessage(data.error);
-                                toast.error(parsed.toastMessage);
-                                throw new Error(parsed.chatMessage);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get response');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.error) {
+                                    // Parse error for rate limit info
+                                    const parsed = parseErrorMessage(data.error);
+                                    toast.error(parsed.toastMessage);
+                                    throw new Error(parsed.chatMessage);
+                                }
+                                
+                                if (data.content) {
+                                    fullMessage += data.content;
+                                    setStreamingMessage(fullMessage);
+                                }
+                                
+                                if (data.done) {
+                                    // Streaming complete
+                                    const aiMessage = { role: 'ai', content: fullMessage };
+                                    setMessages(prev => [...prev, aiMessage]);
+                                    setStreamingMessage('');
+                                    // Save AI response to history
+                                    saveMessageToHistory(aiMessage);
+                                }
+                            } catch (e) {
+                                if (e.message) throw e; // Re-throw actual errors
+                                // Skip invalid JSON
                             }
-                            
-                            if (data.content) {
-                                fullMessage += data.content;
-                                setStreamingMessage(fullMessage);
-                            }
-                            
-                            if (data.done) {
-                                // Streaming complete
-                                const aiMessage = { role: 'ai', content: fullMessage };
-                                setMessages(prev => [...prev, aiMessage]);
-                                setStreamingMessage('');
-                                // Save AI response to history
-                                saveMessageToHistory(aiMessage);
-                            }
-                        } catch (e) {
-                            if (e.message) throw e; // Re-throw actual errors
-                            // Skip invalid JSON
                         }
                     }
                 }

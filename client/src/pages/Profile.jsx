@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Button from "../components/common/Button";
-import { Eye, EyeOff, Key, User, Mail, Edit3, ExternalLink, Copy, AlertCircle, Zap, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Key, User, Mail, Edit3, ExternalLink, Copy, AlertCircle, Zap, RefreshCw, BarChart2 } from "lucide-react";
 import toast from 'react-hot-toast';
 import useSEO from "../hooks/useSEO";
+import ApiUsageCharts from "../components/dashboard/ApiUsageCharts";
 
 const Profile = () => {
   useSEO({ 
@@ -185,6 +186,13 @@ const Profile = () => {
               🔒 Your API key is stored locally in your browser and never sent to our servers.
             </div>
           </div>
+
+          <hr className="border-zinc-800" />
+
+          {/* API Usage Analytics Section */}
+          <ApiUsageCharts />
+
+          <hr className="border-zinc-800" />
 
           <hr className="border-zinc-800" />
 
