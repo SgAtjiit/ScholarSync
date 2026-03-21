@@ -399,6 +399,30 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 💼 LinkedIn Project Description
+
+> Copy and paste the text below when adding ScholarSync as a project on LinkedIn:
+
+---
+
+**ScholarSync – AI-Powered Google Classroom Assistant**
+
+ScholarSync is a full-stack web application that integrates with Google Classroom to supercharge student productivity using AI. Built with React 19, Node.js/Express 5, and MongoDB, it lets students sign in with their Google account and instantly access all their courses and assignments.
+
+Key highlights:
+• AI Workspace powered by Groq's LLaMA 3.3 70B & LLaMA 4 Scout 17B models — generates explanations, step-by-step solution drafts (multi-agent pipeline), practice quizzes, and flashcards for any assignment in seconds.
+• Chat with Documents — context-aware Q&A over assignment PDFs and Google Docs, including vision-based figure/diagram understanding.
+• Rich Text Editor (TipTap) with full formatting support; one-click export to Google Docs and direct submission to Google Classroom.
+• Smart Google Drive integration that auto-organises submitted solutions into per-course folders.
+• BYOK (Bring Your Own Key) privacy model — the Groq API key is stored only in the user's browser and sent per-request; never persisted server-side.
+• Responsive dashboard with course/status filters, sorting, and pagination.
+
+Tech stack: React · Vite · TailwindCSS 4 · Framer Motion · Node.js · Express · MongoDB · Mongoose · Google Classroom/Drive/Docs APIs · Groq SDK · JWT · PDF-Parse
+
+🔗 Live: https://scholarsync.vercel.app
+
+---
+
 ## 👨‍💻 Author
 
 **Shrish Gupta**
