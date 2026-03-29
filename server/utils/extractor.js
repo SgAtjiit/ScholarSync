@@ -282,24 +282,36 @@ export const extractTextFromMaterials = async (materials, accessToken, apiKey) =
 
     const systemPrompt = `You are an expert academic assistant. Analyze the extracted assignment content below and create a structured JSON response.
 
+CRITICAL INSTRUCTIONS:
+- Extract ONLY the questions/prompts that are explicitly asked in the assignment
+- DO NOT include any solutions, answers, worked examples, or answer keys
+- DO NOT generate or infer answers - leave the answer field empty
+- Focus purely on extracting what the student is asked to do
+
 The content includes:
 - All text from the documents
 - [IMAGE: ...] or [FIGURE: ...] descriptions where visual elements appeared
 
 YOUR TASK:
-1. Identify ALL questions in the content
-2. Provide comprehensive answers for each question
-3. If a question references an image/figure, use the description provided to give a complete answer
-4. Include the image/figure description in the 'imageInfo' field
+1. Identify ALL questions/prompts in the content (before any "Solutions", "Answers", or "Answer Key" sections)
+2. Extract the exact question text only
+3. If a question references an image/figure, include the description in 'imageInfo' field
+4. IGNORE any solutions or answer sections - do not include these as answers
+5. Leave the 'answer' field empty (or null) - do not generate answers
+
+WHAT TO SKIP:
+- "Solutions to...", "Answer Key", "Worked Example", "Sample Answer", "Answer Explanation"
+- Any content clearly marked as solutions or answers
+- Model solutions or example answers
 
 RESPONSE FORMAT (JSON only, no markdown):
 {
   "questions": {
     "q1": {
       "question": "The exact question text",
-      "answer": "Complete, detailed answer",
-      "imageInfo": "Description of any related image/diagram (from [IMAGE:] or [FIGURE:] tags)",
-      "otherInfo": "Any additional context or tips"
+      "answer": null,
+      "imageInfo": "Description of any related image/diagram (from [IMAGE:] or [FIGURE:] tags, if any)",
+      "otherInfo": "Any special instructions or requirements mentioned in the question"
     }
   },
   "extractedContent": "The complete extracted content for reference",

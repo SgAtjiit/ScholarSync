@@ -8,6 +8,62 @@ import { createPDF } from '../utils/pdfGenerator.js';
 import { google } from 'googleapis';
 import { PassThrough } from 'stream';
 
+const decodeHtmlEntities = (text = '') => {
+    return text
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ');
+};
+
+const stripHtmlTags = (text = '') => text.replace(/<[^>]*>/g, '');
+
+const escapeXml = (text = '') => {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+};
+
+const createTerminalOutputDocsHtml = (_title, outputText) => {
+    const normalized = (outputText || 'Program executed successfully.')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .trim();
+
+    const lines = (normalized.length > 0 ? normalized.split('\n') : ['Program executed successfully.'])
+        .map(line => line.length ? line : ' ');
+
+    const linesHtml = lines
+        .map(line => `<div style="font-family: Consolas, 'Courier New', monospace; font-size: 11pt; line-height: 1.45; color: #86efac; white-space: pre-wrap;">${escapeXml(line)}</div>`)
+        .join('');
+
+    return `
+<table role="presentation" style="border-collapse: collapse; width: 100%; margin: 12px 0; border: 1px solid #333333; table-layout: fixed;">
+  <tr>
+    <td style="background: #000000; padding: 10px 12px;">
+      ${linesHtml}
+    </td>
+  </tr>
+</table>`;
+};
+
+const convertTerminalBlocksToImages = (html = '') => {
+    if (!html || typeof html !== 'string') return html;
+
+    const terminalBlockRegex = /<div\s+class=["']terminal-output["'][^>]*>[\s\S]*?<div\s+class=["']terminal-title["'][^>]*>([\s\S]*?)<\/div>[\s\S]*?<pre[^>]*>([\s\S]*?)<\/pre>[\s\S]*?<\/div>/gi;
+
+    return html.replace(terminalBlockRegex, (_, titleRaw, outputRaw) => {
+        const title = decodeHtmlEntities(stripHtmlTags(titleRaw || '').trim()) || 'Program Run';
+        const output = decodeHtmlEntities(stripHtmlTags(outputRaw || '').trim()) || 'Program executed successfully.';
+        return createTerminalOutputDocsHtml(title, output);
+    });
+};
+
 export const getAllCourses = async (req, res) => {
     try {
         const courses = await Course.find({ userId: req.params.userId });
@@ -414,7 +470,10 @@ export const openInGoogleDocs = async (req, res) => {
             mainFolderId = mainFolder.data.id;
         }
 
-        // 5. Create HTML content with proper styling for Google Docs
+        // 5. Convert terminal blocks to images to avoid broken line rendering in Google Docs
+        const processedContent = convertTerminalBlocksToImages(content || '<p>Empty document</p>');
+
+        // 6. Create HTML content with proper styling for Google Docs
         const htmlDocument = `
 <!DOCTYPE html>
 <html>
@@ -424,15 +483,20 @@ export const openInGoogleDocs = async (req, res) => {
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; }
         h1, h2, h3 { color: #333; }
-        code { background: #f4f4f4; padding: 2px 6px; }
+        code { background: transparent; padding: 0; font-family: 'Courier New', monospace; }
+        pre { background: transparent; padding: 0; margin: 1em 0; white-space: pre-wrap; font-family: 'Courier New', monospace; }
+        .terminal-output { background: #000; color: #e5e7eb; border: 1px solid #333; border-radius: 6px; margin: 12px 0; overflow: hidden; }
+        .terminal-title { display: block; width: 100%; background: #1a1a1a; color: #cbd5e1; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; padding: 6px 10px; border-bottom: 1px solid #333; }
+        .terminal-output pre { display: block; width: 100%; margin: 0; padding: 10px 12px; background: #000; color: #86efac; white-space: pre-wrap; font-family: 'Courier New', monospace; }
+        .terminal-output code { background: transparent !important; color: inherit !important; }
     </style>
 </head>
 <body>
-${content || '<p>Empty document</p>'}
+${processedContent}
 </body>
 </html>`;
 
-        // 6. Upload HTML and convert to Google Docs using Drive API
+    // 7. Upload HTML and convert to Google Docs using Drive API
         const bufferStream = new PassThrough();
         bufferStream.end(Buffer.from(htmlDocument, 'utf-8'));
 
@@ -451,7 +515,7 @@ ${content || '<p>Empty document</p>'}
 
         const docId = docFile.data.id;
 
-        // 7. Get the editable link
+        // 8. Get the editable link
         const editLink = `https://docs.google.com/document/d/${docId}/edit`;
 
         console.log(`Created Google Doc: ${docName} in ${mainFolderName}`);
@@ -511,8 +575,7 @@ export const syncFromGoogleDocs = async (req, res) => {
             htmlContent = bodyMatch[1];
         }
 
-        // 5. Clean up HTML while PRESERVING images, tables, and important formatting
-        // Remove problematic Google-specific classes but keep structure
+        // 5. Clean up HTML while preserving terminal/code formatting and tables
         htmlContent = htmlContent
             // Remove Google's class attributes (they reference missing stylesheets)
             .replace(/\sclass="[^"]*"/gi, '')
@@ -520,26 +583,33 @@ export const syncFromGoogleDocs = async (req, res) => {
             .replace(/<p[^>]*><\/p>/gi, '')
             // Replace non-breaking spaces
             .replace(/&nbsp;/g, ' ')
-            // Clean up excessive whitespace
-            .replace(/\s+/g, ' ')
+            // Trim spacing between tags only; keep newlines inside pre/code blocks
+            .replace(/>\s+</g, '><')
             .trim();
 
         // 6. Fix image sources - Google Docs uses blob URLs that won't work externally
         // Keep images but note they may need special handling
         // Images from Google Docs are typically embedded as base64 or Google URLs
         
-        // 7. Preserve table structure - just clean up Google-specific attributes
+        // 7. Preserve table structure without overriding existing inline styles
         htmlContent = htmlContent
-            // Remove Google's border attribute but keep table structure
-            .replace(/<table[^>]*>/gi, (match) => {
-                return '<table style="border-collapse: collapse; width: 100%; margin: 1em 0;">';
+            .replace(/<table([^>]*)>/gi, (match, attrs) => {
+                if (/style\s*=\s*"[^"]*"/i.test(attrs)) {
+                    return `<table${attrs}>`;
+                }
+                return `<table style="border-collapse: collapse; width: 100%; margin: 1em 0;"${attrs}>`;
             })
-            // Style table cells
             .replace(/<td([^>]*)>/gi, (match, attrs) => {
-                return '<td style="border: 1px solid #ddd; padding: 8px;"' + attrs + '>';
+                if (/style\s*=\s*"[^"]*"/i.test(attrs)) {
+                    return `<td${attrs}>`;
+                }
+                return `<td style="border: 1px solid #ddd; padding: 8px;"${attrs}>`;
             })
             .replace(/<th([^>]*)>/gi, (match, attrs) => {
-                return '<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4; font-weight: bold;"' + attrs + '>';
+                if (/style\s*=\s*"[^"]*"/i.test(attrs)) {
+                    return `<th${attrs}>`;
+                }
+                return `<th style="border: 1px solid #ddd; padding: 8px; background: #f4f4f4; font-weight: bold;"${attrs}>`;
             });
 
         // 8. Style images for proper display
@@ -639,7 +709,10 @@ export const createDraftDoc = async (req, res) => {
             draftsFolderId = draftsFolder.data.id;
         }
 
-        // 4. Create HTML document with proper styling
+        // 4. Convert terminal blocks to images to avoid broken line rendering in Google Docs
+        const processedContent = convertTerminalBlocksToImages(content);
+
+        // 5. Create HTML document with proper styling
         const safeTitle = (title || 'Draft').replace(/[/\\?%*:|"<>]/g, '-').substring(0, 100);
         const htmlDocument = `
 <!DOCTYPE html>
@@ -656,8 +729,13 @@ export const createDraftDoc = async (req, res) => {
         p { margin: 1em 0; }
         ul, ol { margin: 1em 0; padding-left: 2em; }
         li { margin: 0.5em 0; }
-        code { background: #f4f4f8; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
-        pre { background: #f4f4f8; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        code { background: transparent; padding: 0; border-radius: 0; font-family: 'Courier New', monospace; }
+        pre { background: transparent; padding: 0; border-radius: 0; overflow-x: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; }
+        .code-block, .code-block code { background: transparent !important; }
+        .terminal-output { background: #000; color: #e5e7eb; border: 1px solid #333; border-radius: 6px; margin: 12px 0; overflow: hidden; }
+        .terminal-title { display: block; width: 100%; background: #1a1a1a; color: #cbd5e1; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; padding: 6px 10px; border-bottom: 1px solid #333; }
+        .terminal-output pre { display: block; width: 100%; margin: 0; padding: 10px 12px; background: #000; color: #86efac; white-space: pre-wrap; font-family: 'Courier New', monospace; }
+        .terminal-output code { background: transparent !important; color: inherit !important; }
         blockquote { border-left: 4px solid #4a4a8a; margin: 1em 0; padding-left: 1em; color: #555; }
         table { border-collapse: collapse; width: 100%; margin: 1em 0; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
@@ -667,11 +745,11 @@ export const createDraftDoc = async (req, res) => {
     </style>
 </head>
 <body>
-${content}
+${processedContent}
 </body>
 </html>`;
 
-        // 5. Upload HTML and convert to Google Docs
+    // 6. Upload HTML and convert to Google Docs
         const bufferStream = new PassThrough();
         bufferStream.end(Buffer.from(htmlDocument, 'utf-8'));
 

@@ -9,7 +9,9 @@ import {
     saveChatMessage, 
     clearChatHistory,
     saveClientSolution,
-    saveExtractedContent
+    saveExtractedContent,
+    verifyExtractedQuestions,
+    quickVerifyQuestionsEndpoint
 } from '../controllers/aiController.js';
 
 const router = express.Router();
@@ -29,5 +31,9 @@ router.delete('/chat-history/:assignmentId', clearChatHistory);
 // Client-side AI persistence routes
 router.post('/save-solution', saveClientSolution);
 router.post('/save-extracted', saveExtractedContent);
+
+// Question verification routes
+router.post('/verify-questions', verifyExtractedQuestions);
+router.post('/quick-verify-questions', quickVerifyQuestionsEndpoint);
 
 export default router;

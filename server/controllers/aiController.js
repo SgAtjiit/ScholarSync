@@ -1,4 +1,5 @@
 import { generateSolution, answerTextQuestion, answerTextQuestionStream, submitSolution as saveSolution, explainConcept } from '../services/aiService.js';
+import { verifyQuestions, quickVerifyQuestions, autoFixQuestions } from '../services/questionVerifier.js';
 import Assignment from '../models/Assignment.js';
 import Solution from '../models/Solution.js';
 import Chat from '../models/Chat.js';
@@ -81,9 +82,9 @@ export const chatWithAssignment = async (req, res) => {
             Object.entries(assignment.extractedContent.structuredData.questions).forEach(([key, q]) => {
                 context += `\n${key}: ${q.question}\n`;
                 if (q.imageInfo) context += `[Related Figure: ${q.imageInfo}]\n`;
-                if (q.answer) context += `Answer hint: ${q.answer}\n`;
             });
         }
+
         
         if (!context || context.length < 50) {
             return res.status(400).json({ error: 'Assignment content not extracted yet. Please wait for extraction to complete.' });
@@ -179,8 +180,9 @@ export const chatWithAssignmentStream = async (req, res) => {
 
 export const getSolution = async (req, res) => {
     try {
-        const { mode } = req.query;
+        const { mode, userId } = req.query;
         const query = { assignmentId: req.params.assignmentId };
+        if (userId) query.userId = userId;
         if (mode) query.mode = mode;
         
         const solution = await Solution.findOne(query).sort({ createdAt: -1 });
@@ -276,17 +278,18 @@ export const clearChatHistory = async (req, res) => {
  */
 export const saveClientSolution = async (req, res) => {
     try {
-        const { assignmentId, mode, content, generatedAt, source } = req.body;
+        const { assignmentId, userId, mode, content, generatedAt, source } = req.body;
         
-        if (!assignmentId || !mode || !content) {
-            return res.status(400).json({ error: 'Missing required fields: assignmentId, mode, content' });
+        if (!assignmentId || !userId || !mode || !content) {
+            return res.status(400).json({ error: 'Missing required fields: assignmentId, userId, mode, content' });
         }
         
         // Update or create solution
         const solution = await Solution.findOneAndUpdate(
-            { assignmentId, mode },
+            { assignmentId, userId, mode },
             {
                 assignmentId,
+                userId,
                 mode,
                 content,
                 generatedAt: generatedAt || new Date(),
@@ -331,6 +334,71 @@ export const saveExtractedContent = async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Save extracted content error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Verify extracted questions for quality and accuracy
+ * Uses lightweight local validation first, then optional AI verification if needed
+ * Designed to use minimal tokens
+ */
+export const verifyExtractedQuestions = async (req, res) => {
+    try {
+        const { assignmentId, questions, useAiVerification = false } = req.body;
+        const apiKey = req.headers['x-groq-api-key'];
+        
+        if (!assignmentId || !questions) {
+            return res.status(400).json({ error: 'Missing assignmentId or questions' });
+        }
+
+        if (useAiVerification && !apiKey) {
+            return res.status(400).json({ error: 'API key required for AI verification' });
+        }
+
+        // Run full verification (local + optional AI)
+        const report = await verifyQuestions(questions, useAiVerification ? apiKey : null);
+
+        // Optionally auto-fix detected issues
+        let corrections = null;
+        if (report.issues.length > 0) {
+            corrections = autoFixQuestions(questions, report.issues);
+        }
+
+        res.json({
+            success: true,
+            verification: report,
+            autoCorrections: corrections,
+            recommendation: report.qualityScore >= 80 ? 'approved' : 'review_recommended'
+        });
+    } catch (error) {
+        console.error('Verify questions error:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Quick verification - instant check without AI, no tokens used
+ * Returns only pass/fail with basic stats
+ */
+export const quickVerifyQuestionsEndpoint = async (req, res) => {
+    try {
+        const { questions } = req.body;
+        
+        if (!questions) {
+            return res.status(400).json({ error: 'Questions required' });
+        }
+
+        const result = quickVerifyQuestions(questions);
+
+        res.json({
+            success: true,
+            quickCheck: result,
+            tokensUsed: 0,
+            processingTime: '<1ms'
+        });
+    } catch (error) {
+        console.error('Quick verify error:', error);
         res.status(500).json({ error: error.message });
     }
 };

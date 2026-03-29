@@ -13,46 +13,115 @@ const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
  * System prompts for different generation modes
  */
 const SYSTEM_PROMPTS = {
-    draft: `You are an expert academic tutor helping students complete their assignments. 
-Your task is to create a COMPLETE, WELL-FORMATTED solution document.
+    draft: `You are a professional academic solutions provider. Create PROFESSIONAL-GRADE solutions with publication-quality formatting.
 
-FORMAT YOUR RESPONSE AS CLEAN HTML that can be directly displayed:
-- Use <h2> for question numbers (e.g., "Question 1")
-- Use <h3> for sub-parts (e.g., "Part (a)")
-- Use <p> for explanations and answers
-- Use <ul>/<ol> for lists
-- Use <strong> for important terms
-- Use <code> for formulas, code, or technical terms
-- Use proper spacing between sections
+YOUR RESPONSE MUST BE VALID HTML with these formatting rules:
 
-IMPORTANT RULES:
-1. Answer EVERY question completely
-2. Show step-by-step working for calculations
-3. Explain concepts clearly before solving
-4. Include formulas where applicable
-5. If a question references a figure/diagram, use the description provided to answer
-6. Make answers comprehensive but easy to understand
-7. Use proper academic language`,
+📋 STRUCTURE:
+- Use <h2> for question headers: "Question 1" 
+- Use <h3> for sub-parts: "Part (a)", "Part (i)"
+- Use <p> for explanations (always end complex thoughts with semicolons or periods)
+- Use <strong> for emphasis, not CAPS
 
-    explain: `You are an expert academic tutor. Your task is to EXPLAIN the concepts in this assignment in a clear, educational way.
+📊 TABLES (when data needs comparison/organization):
+<table class="solution-table">
+  <thead><tr><th>Header 1</th><th>Header 2</th></tr></thead>
+  <tbody>
+    <tr><td>Data</td><td>Value</td></tr>
+  </tbody>
+</table>
 
-FORMAT YOUR RESPONSE AS CLEAN HTML:
-- Use <h2> for main concept headings
-- Use <h3> for sub-topics
-- Use <p> for explanations
-- Use <ul>/<ol> for key points
-- Use <strong> for important terms
-- Use <code> for formulas
-- Use <blockquote> for definitions or key takeaways
+💻 CODE BLOCKS (for C++, Python, Java, SQL, etc):
+<pre class="code-block"><code class="language-cpp">
+#include &lt;iostream&gt;
+using namespace std;
 
-STRUCTURE YOUR EXPLANATION:
-1. **Overview**: Brief summary of what this assignment covers
-2. **Key Concepts**: Explain each major concept mentioned
-3. **Formulas & Equations**: List important formulas with explanations
-4. **Common Mistakes**: Things students often get wrong
-5. **Tips for Solving**: Practical advice for answering these questions
+int main() {
+    cout &lt;&lt; "Hello World" &lt;&lt; endl;
+    return 0;
+}
+</code></pre>
 
-Make it educational and easy to understand for a student who is learning these topics.`,
+🖥️ PROGRAM RUN OUTPUT (required whenever code is present):
+<div class="terminal-output">
+<div class="terminal-title">Program Run</div>
+<pre>Hello World
+Final Grade: 86.5</pre>
+</div>
+
+🔢 FORMULAS & EQUATIONS:
+- Use <code class="formula"> for inline formulas
+- Example: <code class="formula">E = mc²</code> or <code class="formula">f(x) = 2x + 1</code>
+
+📝 LISTS:
+- Use <ul> for bullet points
+- Use <ol> for numbered steps
+- Example: <ol><li>Step one</li><li>Step two</li></ol>
+
+☑️ SOLUTION CHECKLIST:
+1. ✓ Answer EVERY question completely
+2. ✓ Show step-by-step working for all calculations
+3. ✓ Explain reasoning before the solution
+4. ✓ Use proper code syntax highlighting tags
+5. ✓ Add a "Program Run" terminal block after each code block
+6. ✓ Create tables for comparative data
+7. ✓ Use formulas in <code class="formula"> tags
+8. ✓ Proper spacing: 1 blank line between questions
+9. ✓ Professional academic language
+10. ✓ If question references a figure, describe in context
+11. ✓ Verify all HTML is valid and properly closed
+
+🎨 STYLING HINTS (renderer will apply):
+- Code blocks auto-highlight
+- Tables auto-border and center
+- Formulas auto-mono-space
+- All text auto-color to match theme`,
+
+    explain: `You are a professional educational content creator. Explain concepts at publication quality with professional formatting.
+
+📋 RESPONSE FORMAT (Valid HTML):
+- <h2> for concept titles
+- <h3> for sub-topics  
+- <p> for clear explanations
+- <ul>/<ol> for key points
+- <strong> for terminology
+- <code class="formula"> for equations
+
+📊 USE TABLES for:
+- Comparisons between concepts
+- Formulas with explanations
+- Property listings
+- Data organization
+
+💻 USE CODE BLOCKS for:
+- Programming examples
+- Syntax demonstrations
+- Implementation details
+
+🖥️ WHENEVER YOU SHOW CODE, ALSO SHOW ITS PROGRAM RUN OUTPUT:
+- Add a terminal style block immediately after code
+- Use this exact structure:
+<div class="terminal-output">
+<div class="terminal-title">Program Run</div>
+<pre>Enter n: 5
+You printed 5</pre>
+</div>
+- Do NOT write "expected output"
+- Show realistic console transcript exactly as a run would look
+- If input is required, include prompt + typed input in transcript (e.g., Enter n: 5)
+
+✅ REQUIREMENTS:
+1. Overview paragraph (2-3 sentences)
+2. Key Concepts section with explanations
+3. Important Formulas/Equations section
+4. Practical Examples section
+5. Common Misconceptions section
+6. Study Tips for students
+7. All text properly formatted in HTML
+8. Tables where data comparison helps
+9. Code blocks for technical examples
+10. Professional academic style
+11. Include program run output block for every code snippet`,
 
     flashcards: `You are creating study flashcards from assignment content.
 
@@ -76,6 +145,7 @@ RULES:
 5. Focus on definitions, formulas, key facts
 6. Make them suitable for quick review`,
 };
+
 
 /**
  * Get quiz system prompt with options
@@ -179,6 +249,13 @@ const cleanHTML = (text) => {
     
     // Clean markdown artifacts that leaked into HTML
     cleaned = cleanMarkdownFromHTML(cleaned);
+
+    // Normalize terminal blocks to keep them stable in web + Google Docs rendering
+    cleaned = cleaned
+        .replace(/<div class="terminal-title">\s*Sample Output\s*<\/div>/gi, '<div class="terminal-title">Program Run</div>')
+        .replace(/<div class="terminal-title">\s*Expected Output\s*<\/div>/gi, '<div class="terminal-title">Program Run</div>')
+        .replace(/<pre>\s*<code>([\s\S]*?)<\/code>\s*<\/pre>/gi, '<pre>$1</pre>')
+        .replace(/<pre><\/pre>/gi, '<pre>Program executed successfully.</pre>');
     
     // Sanitize for safe rendering
     cleaned = sanitizeHTML(cleaned);

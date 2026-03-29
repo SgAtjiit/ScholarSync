@@ -4,12 +4,57 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { chatWithContentStream } from '../../services/aiGenerationService';
-import { cleanTextContent } from '../../utils/textCleaner';
+import { cleanMarkdownFromHTML, sanitizeHTML } from '../../utils/textCleaner';
 
-// Clean chat message for display
-const cleanChatMessage = (text) => {
-    if (!text || typeof text !== 'string') return text || '';
-    return cleanTextContent(text);
+// Escape helper for plain text blocks
+const escapeHtml = (text = '') => {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
+// Format AI message as rich HTML (markdown + paragraphs + code blocks)
+const formatAiMessage = (text) => {
+    if (!text || typeof text !== 'string') return '';
+
+    // Normalize line breaks and remove control chars only
+    let cleaned = text
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .trim();
+
+    // Extract fenced code blocks first to avoid paragraph processing inside code
+    const codeBlocks = [];
+    cleaned = cleaned.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang = '', code = '') => {
+        const idx = codeBlocks.length;
+        codeBlocks.push(
+            `<pre class="chat-code-block"><code class="language-${lang || 'text'}">${escapeHtml(code.trim())}</code></pre>`
+        );
+        return `__CHAT_CODE_BLOCK_${idx}__`;
+    });
+
+    // Convert markdown-ish content to HTML
+    cleaned = cleanMarkdownFromHTML(cleaned);
+
+    // Restore code blocks
+    cleaned = cleaned.replace(/__CHAT_CODE_BLOCK_(\d+)__/g, (_, i) => codeBlocks[Number(i)] || '');
+
+    // If there are no explicit block tags, wrap by paragraphs for readability
+    const hasBlockTags = /<(h1|h2|h3|h4|ul|ol|li|pre|table|blockquote|p|hr)\b/i.test(cleaned);
+    if (!hasBlockTags) {
+        cleaned = cleaned
+            .split(/\n{2,}/)
+            .map(part => part.trim())
+            .filter(Boolean)
+            .map(part => `<p>${part.replace(/\n/g, '<br />')}</p>`)
+            .join('');
+    }
+
+    return sanitizeHTML(cleaned);
 };
 
 // Helper to parse error and extract rate limit info
@@ -391,7 +436,14 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle, extractedContent })
                                     <Sparkles size={10} className="sm:w-3 sm:h-3" /> AI
                                 </div>
                             )}
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{msg.role === 'ai' ? cleanChatMessage(msg.content) : msg.content}</p>
+                            {msg.role === 'ai' ? (
+                                <div
+                                    className="chat-rich-output text-xs sm:text-sm leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: formatAiMessage(msg.content) }}
+                                />
+                            ) : (
+                                <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -403,7 +455,7 @@ const ChatWithAssignment = ({ assignmentId, assignmentTitle, extractedContent })
                             <div className="flex items-center gap-2 mb-1 sm:mb-2 text-indigo-400 text-[10px] sm:text-xs font-medium">
                                 <Sparkles size={10} className="sm:w-3 sm:h-3 animate-pulse" /> AI
                             </div>
-                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{cleanChatMessage(streamingMessage)}<span className="animate-pulse">▊</span></p>
+                            <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">{streamingMessage}<span className="animate-pulse">▊</span></p>
                         </div>
                     </div>
                 )}

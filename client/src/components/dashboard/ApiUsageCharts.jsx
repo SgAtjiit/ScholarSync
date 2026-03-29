@@ -77,6 +77,35 @@ const ApiUsageCharts = () => {
         'from-pink-500 to-rose-500',
     ];
 
+    const donutStrokeColors = ['#818cf8', '#22d3ee', '#34d399', '#fb923c', '#f472b6'];
+
+    const modelDonutSegments = (() => {
+        let cumulativeOffset = 0;
+
+        return usage.byModel.map((model, idx) => {
+            const percentage = ((model.inputTokens + model.outputTokens) / totalModelTokens) * 100;
+            const strokeLength = (percentage / 100) * 440;
+
+            const segment = (
+                <circle
+                    key={model.model}
+                    cx="80"
+                    cy="80"
+                    r="70"
+                    fill="none"
+                    stroke={donutStrokeColors[idx % donutStrokeColors.length]}
+                    strokeWidth="12"
+                    strokeDasharray={`${strokeLength} 440`}
+                    strokeDashoffset={-cumulativeOffset}
+                    className="transition-all duration-500"
+                />
+            );
+
+            cumulativeOffset += strokeLength;
+            return segment;
+        });
+    })();
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -142,6 +171,7 @@ const ApiUsageCharts = () => {
                     { id: 'models', label: 'By Model', icon: PieChart },
                 ].map((tab) => (
                     <button
+                        type="button"
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -421,30 +451,7 @@ const ApiUsageCharts = () => {
                                                 stroke="#3f3f46"
                                                 strokeWidth="12"
                                             />
-                                            {usage.byModel.reduce((acc, model, idx) => {
-                                                const percentage = ((model.inputTokens + model.outputTokens) / totalModelTokens) * 100;
-                                                const strokeDasharray = (percentage / 100) * 440;
-                                                const strokeDashoffset = -acc;
-                                                acc += strokeDasharray;
-                                                
-                                                const colors = ['#818cf8', '#22d3ee', '#34d399', '#fb923c', '#f472b6'];
-                                                
-                                                return [
-                                                    ...acc,
-                                                    <circle
-                                                        key={model.model}
-                                                        cx="80"
-                                                        cy="80"
-                                                        r="70"
-                                                        fill="none"
-                                                        stroke={colors[idx % colors.length]}
-                                                        strokeWidth="12"
-                                                        strokeDasharray={`${strokeDasharray} 440`}
-                                                        strokeDashoffset={typeof acc === 'number' ? -acc + strokeDasharray : 0}
-                                                        className="transition-all duration-500"
-                                                    />
-                                                ];
-                                            }, 0)}
+                                            {modelDonutSegments}
                                         </svg>
                                     </div>
 

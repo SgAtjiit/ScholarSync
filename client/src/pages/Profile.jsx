@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import Button from "../components/common/Button";
-import { Eye, EyeOff, Key, User, Mail, Edit3, ExternalLink, Copy, AlertCircle, Zap, RefreshCw, BarChart2 } from "lucide-react";
+import { 
+  Eye, EyeOff, Key, User, Mail, Edit3, ExternalLink, 
+  Copy, AlertCircle, Zap, RefreshCw, CheckCircle2, 
+  TerminalSquare, BookOpen, ShieldCheck, Cpu
+} from "lucide-react";
 import toast from 'react-hot-toast';
 import useSEO from "../hooks/useSEO";
 import ApiUsageCharts from "../components/dashboard/ApiUsageCharts";
@@ -17,7 +21,6 @@ const Profile = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [editingPrompt, setEditingPrompt] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const storedKey = localStorage.getItem("groq_api_key") || "";
@@ -53,13 +56,6 @@ const Profile = () => {
     toast.success("Custom prompt saved!");
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText('https://console.groq.com/keys');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success('Link copied!');
-  };
-
   // Avatar: Use Google photoURL if available, else fallback to initials
   const avatarUrl = user?.photoURL;
   const initials = user?.name
@@ -67,271 +63,253 @@ const Profile = () => {
     : "U";
 
   return (
-    <div className="max-w-4xl mx-auto mt-6 px-2 sm:px-4 md:px-8 w-full pb-12">
-      <div className="bg-[#18181b] rounded-2xl shadow-xl border border-zinc-800 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 p-8 border-b border-zinc-800">
-          <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-            {/* Avatar */}
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-20">
+      
+      {/* --- 1. Premium Profile Header --- */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#121214] border border-white/5 shadow-2xl">
+        {/* Subtle Ambient Glows */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative p-6 sm:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          {/* Avatar Container */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full blur-md opacity-50"></div>
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt="avatar"
-                className="w-20 h-20 rounded-full border-4 border-indigo-500 shadow-lg object-cover bg-zinc-800 flex-shrink-0"
+                className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-[#1a1a1e] object-cover bg-zinc-800 z-10"
               />
             ) : (
-              <div className="w-20 h-20 rounded-full flex items-center justify-center bg-indigo-700 text-white text-2xl font-bold border-4 border-indigo-500 shadow-lg flex-shrink-0">
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 text-white text-3xl font-bold border-2 border-[#1a1a1e] shadow-xl z-10">
                 {initials}
               </div>
             )}
-            
-            {/* Info */}
-            <div className="flex-1 text-center sm:text-left">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{user?.name || "User"}</h1>
-              <p className="text-zinc-400">{user?.email || "No email"}</p>
-            </div>
           </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 sm:p-8 space-y-8">
           
-          {/* API Key Section - Now More Prominent */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-600/20 rounded-lg">
-                <Key className="text-indigo-400" size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Groq API Key</h2>
-                <p className="text-xs text-zinc-500">Required for AI features</p>
-              </div>
+          {/* User Details */}
+          <div className="flex-1 text-center sm:text-left pt-2">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">
+              {user?.name || "User"}
+            </h1>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-zinc-300 text-sm backdrop-blur-md">
+              <Mail size={14} className="text-zinc-400" />
+              <span>{user?.email || "No email provided"}</span>
             </div>
-
-            {/* Status */}
-            <div className={`p-3 rounded-lg border flex gap-3 items-start ${
-              apiKey 
-                ? 'bg-green-600/10 border-green-600/30' 
-                : 'bg-amber-600/10 border-amber-600/30'
-            }`}>
-              <AlertCircle size={18} className={`flex-shrink-0 mt-0.5 ${
-                apiKey ? 'text-green-500' : 'text-amber-500'
-              }`} />
-              <div>
-                <p className={`text-sm font-medium ${apiKey ? 'text-green-100' : 'text-amber-100'}`}>
-                  {apiKey ? '✓ API Key is configured' : '⚠️ API Key not configured'}
-                </p>
-                <p className={`text-xs mt-1 ${apiKey ? 'text-green-100/70' : 'text-amber-100/70'}`}>
-                  {apiKey 
-                    ? 'Your AI features are enabled.' 
-                    : 'Without an API key, you cannot use AI features like generating solutions, quizzes, and flashcards.'}
-                </p>
-              </div>
-            </div>
-
-            {/* API Key Input */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-zinc-300">Enter your API Key:</label>
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                <div className="relative flex-1">
-                  <input
-                    type={showApiKey ? "text" : "password"}
-                    className="bg-zinc-900 text-white px-4 py-2.5 pr-10 rounded-lg w-full border border-zinc-700 focus:outline-none focus:border-indigo-500 transition-colors text-sm"
-                    value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
-                    placeholder="gsk_..."
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-indigo-400"
-                    tabIndex={-1}
-                  >
-                    {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                <Button size="sm" className="w-full sm:w-auto" onClick={handleApiKeySave}>
-                  Save Key
-                </Button>
-              </div>
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3 border border-zinc-700">
-              <p className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                <Zap size={16} /> How to get your API key?
-              </p>
-              <ol className="space-y-2 text-sm text-zinc-300">
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">1</span>
-                  <span>Go to <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline inline-flex items-center gap-1">console.groq.com/keys <ExternalLink size={14} /></a></span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Sign in with Google or email (free account)</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">3</span>
-                  <span>Click "Create New API Key" and copy it</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold">4</span>
-                  <span>Paste the key above and save</span>
-                </li>
-              </ol>
-              <p className="text-xs text-zinc-500 italic pt-2">💡 Groq offers free API credits for new users!</p>
-            </div>
-
-            <div className="text-xs text-zinc-600 bg-zinc-900/50 p-3 rounded-lg">
-              🔒 Your API key is stored locally in your browser and never sent to our servers.
-            </div>
-          </div>
-
-          <hr className="border-zinc-800" />
-
-          {/* API Usage Analytics Section */}
-          <ApiUsageCharts />
-
-          <hr className="border-zinc-800" />
-
-          <hr className="border-zinc-800" />
-
-          {/* Classroom Sync Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-600/20 rounded-lg">
-                <RefreshCw className="text-purple-400" size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Google Classroom</h2>
-                <p className="text-xs text-zinc-500">Sync your assignments</p>
-              </div>
-            </div>
-
-            <div className="bg-purple-600/10 border border-purple-600/30 rounded-lg p-4 space-y-3">
-              <p className="text-sm text-purple-100">
-                <strong>How to sync assignments:</strong>
-              </p>
-              <ol className="space-y-2 text-sm text-purple-100">
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 font-bold text-purple-300">1.</span>
-                  <span>Go to <strong>Dashboard</strong> from the main menu</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 font-bold text-purple-300">2.</span>
-                  <span>Click on a course to view assignments</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 font-bold text-purple-300">3.</span>
-                  <span>Select an assignment to open the workspace</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 font-bold text-purple-300">4.</span>
-                  <span>Use AI tools to generate solutions, quizzes, flashcards, etc.</span>
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <hr className="border-zinc-800" />
-
-          {/* Workspace Tips Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-600/20 rounded-lg">
-                <Zap className="text-cyan-400" size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Workspace Tips</h2>
-                <p className="text-xs text-zinc-500">Get the most out of ScholarSync</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-sm text-zinc-300">
-              <div className="bg-cyan-600/10 border border-cyan-600/30 rounded-lg p-4 space-y-2">
-                <p className="text-cyan-100 font-semibold">📚 After opening an assignment:</p>
-                <ul className="space-y-2">
-                  <li className="flex gap-2">
-                    <span>💬</span>
-                    <span><strong>Chat Tab:</strong> Ask questions about the assignment - AI has the full content</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>📄</span>
-                    <span><strong>Document Tab:</strong> View PDFs/Documents with full content extracted</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>✨</span>
-                    <span><strong>Left Panel:</strong> Generate solutions, quizzes, flashcards, study notes</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>📋</span>
-                    <span><strong>Multiple Docs:</strong> Select which document to use for AI generation</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-cyan-600/10 border border-cyan-600/30 rounded-lg p-4 space-y-2">
-                <p className="text-cyan-100 font-semibold">🎯 Navigation Guide:</p>
-                <ul className="space-y-2">
-                  <li className="flex gap-2">
-                    <span>🏠</span>
-                    <span><strong>Dashboard:</strong> View all courses and assignments</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>⚙️</span>
-                    <span><strong>Profile (Settings):</strong> Update API key & custom prompts</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <span>🔄</span>
-                    <span><strong>Regenerate:</strong> Click to regenerate content with different variations</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-zinc-800" />
-
-          {/* Custom Prompt Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-600/20 rounded-lg">
-                <Edit3 className="text-orange-400" size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-white">Custom System Prompt</h2>
-                <p className="text-xs text-zinc-500">Personalize AI responses</p>
-              </div>
-            </div>
-
-            {editingPrompt ? (
-              <div className="space-y-2">
-                <p className="text-sm text-zinc-400">Tell the AI how you'd like it to respond:</p>
-                <textarea
-                  className="bg-zinc-900 text-white px-4 py-3 rounded-lg w-full border border-zinc-700 focus:outline-none focus:border-indigo-500 text-sm resize-none"
-                  rows={4}
-                  value={customPrompt}
-                  onChange={e => setCustomPrompt(e.target.value)}
-                  placeholder="e.g., Write solutions in a friendly, step-by-step style with examples..."
-                />
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setEditingPrompt(false)}>Cancel</Button>
-                  <Button size="sm" onClick={handlePromptSave}>Save Prompt</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex gap-2 items-start">
-                <div className="bg-zinc-900 text-zinc-300 px-4 py-3 rounded-lg w-full border border-zinc-700 min-h-[80px] text-sm">
-                  {customPrompt || <span className="text-zinc-500 italic">No custom prompt set. Use default AI behavior.</span>}
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => setEditingPrompt(true)}>
-                  Edit
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* --- 2. Main Configuration Grid --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        
+        {/* LEFT COLUMN: Settings (Col span 7) */}
+        <div className="lg:col-span-7 space-y-6 sm:space-y-8">
+          
+          {/* API Configuration Card */}
+          <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
+                  <Key className="text-indigo-400" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">API Configuration</h2>
+                  <p className="text-sm text-zinc-400 mt-0.5">Manage your Groq API access securely</p>
+                </div>
+              </div>
+              
+              {/* Status Badge */}
+              {apiKey ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-semibold whitespace-nowrap">
+                  <ShieldCheck size={14} /> Connected
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full text-xs font-semibold whitespace-nowrap">
+                  <AlertCircle size={14} /> Missing Key
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 ml-1">Groq API Key</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <input
+                      type={showApiKey ? "text" : "password"}
+                      className="bg-[#09090b] text-zinc-100 px-4 py-3 pr-12 rounded-xl w-full border border-white/10 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all font-mono text-sm shadow-inner"
+                      value={apiKey}
+                      onChange={e => setApiKey(e.target.value)}
+                      placeholder="gsk_..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(v => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <Button onClick={handleApiKeySave} className="w-full sm:w-auto px-8 py-3 rounded-xl shadow-lg shadow-indigo-500/20">
+                    Save Key
+                  </Button>
+                </div>
+              </div>
+
+              {/* Refined Instructions */}
+              <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-4 sm:p-5 flex gap-4">
+                <Cpu className="text-indigo-400 shrink-0 mt-0.5" size={20} />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-indigo-200">How to get your free API key:</p>
+                  <ol className="text-xs text-zinc-400 space-y-1.5 list-decimal list-inside marker:text-indigo-500/50">
+                    <li>Visit <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline inline-flex items-center gap-1 font-medium">console.groq.com <ExternalLink size={10} /></a></li>
+                    <li>Sign in and click "Create New API Key"</li>
+                    <li>Paste the key above. It is stored locally and never sent to our servers.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* System Prompt Card */}
+          <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
+                  <TerminalSquare className="text-orange-400" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">System Prompt</h2>
+                  <p className="text-sm text-zinc-400 mt-0.5">Customize how the AI responds to you</p>
+                </div>
+              </div>
+              {!editingPrompt && (
+                <Button size="sm" variant="secondary" onClick={() => setEditingPrompt(true)} className="rounded-xl border-white/10 bg-white/5 hover:bg-white/10">
+                  <Edit3 size={14} className="mr-2" /> Edit
+                </Button>
+              )}
+            </div>
+
+            {editingPrompt ? (
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                <textarea
+                  className="bg-[#09090b] text-zinc-300 px-4 py-4 rounded-xl w-full border border-white/10 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 text-sm resize-none font-mono leading-relaxed shadow-inner"
+                  rows={5}
+                  value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value)}
+                  placeholder="e.g., Act as a strict professor. Always explain mathematical steps in detail..."
+                />
+                <div className="flex justify-end gap-3">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingPrompt(false)} className="hover:bg-white/5 rounded-xl">Cancel</Button>
+                  <Button size="sm" onClick={handlePromptSave} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl shadow-lg shadow-orange-500/20">
+                    Save Prompt
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#09090b] border border-white/5 rounded-xl p-5 min-h-[100px] text-sm text-zinc-300 font-mono shadow-inner">
+                {customPrompt ? (
+                  <p className="whitespace-pre-wrap leading-relaxed text-zinc-300">{customPrompt}</p>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 gap-2 py-4">
+                    <TerminalSquare size={24} className="opacity-50" />
+                    <p className="italic">No custom rules set. The AI will use default academic behavior.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: Guides (Col span 5) */}
+        <div className="lg:col-span-5 space-y-6 sm:space-y-8">
+          
+          {/* Quick Guides Card */}
+          <div className="bg-[#121214] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-xl h-full">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl">
+                <BookOpen className="text-cyan-400" size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white tracking-tight">Quick Guides</h2>
+                <p className="text-sm text-zinc-400 mt-0.5">Master your workspace</p>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              {/* Sync Guide */}
+              <div className="group">
+                <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2.5 mb-4 uppercase tracking-wider">
+                  <RefreshCw size={16} className="text-purple-400" />
+                  Classroom Sync
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex gap-4 p-3 rounded-xl bg-white/5 border border-white/5 group-hover:bg-white/10 transition-colors">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#09090b] border border-white/10 text-zinc-400 flex items-center justify-center font-bold text-xs shadow-inner">1</span>
+                    <p className="text-sm text-zinc-300 leading-relaxed mt-0.5">Go to your <strong>Dashboard</strong> to view linked courses.</p>
+                  </div>
+                  <div className="flex gap-4 p-3 rounded-xl bg-white/5 border border-white/5 group-hover:bg-white/10 transition-colors">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#09090b] border border-white/10 text-zinc-400 flex items-center justify-center font-bold text-xs shadow-inner">2</span>
+                    <p className="text-sm text-zinc-300 leading-relaxed mt-0.5">Select a course, then click on any assignment to open the AI workspace.</p>
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-white/5" />
+
+              {/* Workspace Navigation */}
+              <div>
+                <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2.5 mb-4 uppercase tracking-wider">
+                  <Zap size={16} className="text-cyan-400" />
+                  Workspace Tools
+                </h3>
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">💬</div>
+                      <span className="text-sm font-semibold text-zinc-200">Chat Tab</span>
+                    </div>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Q&A</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">📄</div>
+                      <span className="text-sm font-semibold text-zinc-200">Doc Tab</span>
+                    </div>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Source Files</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">✨</div>
+                      <span className="text-sm font-semibold text-zinc-200">AI Toolkit</span>
+                    </div>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Generator</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* --- 3. API Usage Analytics (Moved to Bottom) --- */}
+      <div className="rounded-3xl bg-[#121214] border border-white/5 shadow-xl overflow-hidden p-1 sm:p-2">
+        <ApiUsageCharts />
+      </div>
+
     </div>
   );
 };

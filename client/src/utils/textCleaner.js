@@ -15,12 +15,25 @@ export const cleanMarkdownFromHTML = (text) => {
 
     let cleaned = text;
 
-    // Remove markdown code blocks
-    cleaned = cleaned.replace(/```[\s\S]*?```/g, (match) => {
-        // Extract content from code block and wrap in <pre><code>
-        const content = match.replace(/```\w*\n?/g, '').replace(/```/g, '');
-        return `<pre><code>${content.trim()}</code></pre>`;
+    const escapeHtml = (value = '') => value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    // Convert fenced markdown code blocks into styled HTML blocks.
+    cleaned = cleaned.replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, language = '', code = '') => {
+        const lang = (language || 'text').toLowerCase();
+        const safeCode = escapeHtml(code.trim());
+        return `<pre class="code-block"><code class="language-${lang}">${safeCode}</code></pre>`;
     });
+
+    // Normalize plain pre/code pairs so explain mode styles apply consistently.
+    cleaned = cleaned
+        .replace(/<pre(?![^>]*class=)([^>]*)>\s*<code(?![^>]*class=)([^>]*)>/gi, '<pre class="code-block"$1><code class="language-text"$2>')
+        .replace(/<pre(?![^>]*class=)([^>]*)>\s*<code([^>]*)class=["']([^"']+)["']([^>]*)>/gi, '<pre class="code-block"$1><code$2 class="$3"$4>')
+        .replace(/<pre([^>]*)class=["']([^"']*)["']([^>]*)>\s*<code(?![^>]*class=)([^>]*)>/gi, '<pre$1 class="$2"$3><code class="language-text"$4>');
 
     // Remove inline code backticks if not inside <code> tags
     cleaned = cleaned.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -55,11 +68,6 @@ export const cleanMarkdownFromHTML = (text) => {
     // Convert markdown horizontal rules
     cleaned = cleaned.replace(/^---+$/gm, '<hr>');
     cleaned = cleaned.replace(/^\*\*\*+$/gm, '<hr>');
-
-    // Clean HTML entities that may have been double-encoded
-    cleaned = cleaned.replace(/&amp;/g, '&');
-    cleaned = cleaned.replace(/&lt;/g, '<');
-    cleaned = cleaned.replace(/&gt;/g, '>');
 
     return cleaned.trim();
 };

@@ -1,49 +1,49 @@
-import { Brain, Sparkles, Layers, PenTool, Loader2, CheckCircle2 } from "lucide-react";
-import Button from "../../components/common/Button";
+import { Brain, HelpCircle, Layers, PenTool, Loader2, Check } from 'lucide-react';
 
-const AIAssistant = ({ activeMode, onGenerate, generating, hasSolution }) => {
-  const tools = [
-    { id: 'explain', label: 'Explain', icon: Brain, desc: "📚 Understand core topics", tooltip: "Get detailed explanations of all concepts in this assignment" },
-    { id: 'quiz', label: 'Quiz', icon: Layers, desc: "🎯 Test your knowledge", tooltip: "Practice with auto-generated quiz questions" },
-    { id: 'flashcards', label: 'Cards', icon: Sparkles, desc: "📖 Memorize key terms", tooltip: "Create interactive study flashcards" },
-    { id: 'draft', label: 'Draft', icon: PenTool, desc: "✍️ Create submission", tooltip: "Write and edit your assignment solution" },
+const AIAssistant = ({ activeMode, onGenerate, generating, hasSolution, disabled }) => {
+  const modes = [
+    { id: 'explain', label: 'Explain', icon: Brain, description: 'Explain the document' },
+    { id: 'quiz', label: 'Create Quiz', icon: HelpCircle, description: 'Test your knowledge' },
+    { id: 'flashcards', label: 'Make Flashcards', icon: Layers, description: 'For quick review' },
+    { id: 'draft', label: 'Draft Solution', icon: PenTool, description: 'Start your assignment' },
   ];
 
   return (
-    <div className="flex flex-col gap-2 sm:gap-3">
-      <div className="mb-1 sm:mb-2 px-1">
-        <h3 className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">AI Tools</h3>
-      </div>
+    <div className={`grid grid-cols-2 gap-2 sm:gap-3 ${disabled ? 'opacity-50' : ''}`}>
+      {modes.map(mode => {
+        const isGenerating = generating && activeMode === mode.id;
+        const isCompleted = hasSolution(mode.id);
 
-      {/* Horizontal scroll on mobile, vertical on desktop */}
-      <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-2 px-2 lg:mx-0 lg:px-0 scrollbar-hide">
-        {tools.map((tool) => {
-          const isActive = activeMode === tool.id;
-          return (
-            <button
-              key={tool.id}
-              onClick={() => onGenerate(tool.id)}
-              disabled={generating}
-              title={tool.tooltip}
-              className={`flex-shrink-0 lg:flex-shrink flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl text-left transition-all border min-w-[100px] lg:min-w-0 lg:w-full ${isActive
-                  ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/20'
-                  : 'bg-zinc-900/40 border-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
-            >
-              <div className={`p-1.5 sm:p-2 rounded-lg ${isActive ? 'bg-white/20' : 'bg-zinc-800'}`}>
-                {generating && isActive ? <Loader2 size={16} className="animate-spin" /> : <tool.icon size={16} />}
+        return (
+          <button
+            key={mode.id}
+            onClick={() => onGenerate(mode.id)}
+            disabled={isGenerating || disabled}
+            className={`relative flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-xl transition-all border ${
+              activeMode === mode.id
+                ? 'bg-indigo-600/30 border-indigo-500 text-white'
+                : 'bg-zinc-800/50 border-zinc-700/50 hover:bg-zinc-700/70 hover:border-indigo-500/50'
+            } ${isGenerating ? 'animate-pulse' : ''}`}
+          >
+            <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-zinc-900/70 mb-2">
+              <mode.icon className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${activeMode === mode.id ? 'text-indigo-300' : 'text-zinc-400'}`} />
+            </div>
+            <p className="text-xs sm:text-sm font-semibold text-zinc-200">{mode.label}</p>
+            
+            {isGenerating && (
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50 rounded-xl">
+                <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-xs sm:text-sm truncate">{tool.label}</p>
-                <p className={`text-[9px] sm:text-[10px] truncate hidden sm:block ${isActive ? 'text-indigo-200' : 'text-zinc-600'}`}>{tool.desc}</p>
+            )}
+            
+            {isCompleted && activeMode !== mode.id && (
+              <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex items-center justify-center w-4 h-4 rounded-full bg-green-500/80">
+                <Check size={10} className="text-white" />
               </div>
-              {hasSolution(tool.id) && !isActive && (
-                <CheckCircle2 size={12} className="flex-shrink-0 text-green-500" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 };

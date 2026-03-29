@@ -1,7 +1,43 @@
 import { google } from 'googleapis';
 import User from '../models/User.js';
 import axios from 'axios';
-import { PassThrough } from 'stream';
+import path from 'path';
+import os from 'os';
+import { promises as fs } from 'fs';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { convert } = require('docx2pdf-converter');
+
+const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+const isDocxFile = (name = '', mimeType = '') => {
+    return mimeType === DOCX_MIME_TYPE || name.toLowerCase().endsWith('.docx');
+};
+
+const toPdfFileName = (name = 'document.docx') => {
+    const parsed = path.parse(name);
+    return `${parsed.name || 'document'}.pdf`;
+};
+
+const convertDocxBufferToPdf = async (docxBuffer, originalName) => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scholarsync-docx-'));
+    const inputName = originalName?.toLowerCase().endsWith('.docx') ? originalName : `${originalName || 'document'}.docx`;
+    const inputPath = path.join(tempDir, inputName);
+    const outputPath = path.join(tempDir, toPdfFileName(inputName));
+
+    try {
+        await fs.writeFile(inputPath, docxBuffer);
+        try {
+            convert(inputPath, outputPath);
+        } catch (error) {
+            throw new Error(`DOCX to PDF conversion failed for ${originalName || 'document.docx'}: ${error.message}. Ensure conversion dependencies are installed for this OS.`);
+        }
+        return await fs.readFile(outputPath);
+    } finally {
+        await fs.rm(tempDir, { recursive: true, force: true });
+    }
+};
 
 /**
  * Streaming Proxy Controller
@@ -54,16 +90,34 @@ export const streamFileFromDrive = async (req, res) => {
 
         const { name, mimeType, size } = metadataResponse.data;
 
-        // Set response headers for streaming
+        // For DOCX files, convert to PDF before returning so client PDF tools can process it.
+        if (isDocxFile(name, mimeType)) {
+            const docxResponse = await axios({
+                method: 'GET',
+                url: `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'arraybuffer'
+            });
+
+            const pdfBuffer = await convertDocxBufferToPdf(Buffer.from(docxResponse.data), name || 'document.docx');
+            const pdfName = toPdfFileName(name || 'document.docx');
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(pdfName)}"`);
+            res.setHeader('Content-Length', pdfBuffer.length);
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
+
+            return res.end(pdfBuffer);
+        }
+
+        // Set response headers for direct streaming
         res.setHeader('Content-Type', mimeType || 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(name || 'document')}"`);
         if (size) {
             res.setHeader('Content-Length', size);
         }
-        // Allow CORS for streaming
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
 
-        // Stream the file directly without buffering
         const fileStream = await axios({
             method: 'GET',
             url: `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -71,10 +125,8 @@ export const streamFileFromDrive = async (req, res) => {
             responseType: 'stream'
         });
 
-        // Pipe the stream directly to response (no memory buffering!)
         fileStream.data.pipe(res);
 
-        // Handle stream errors
         fileStream.data.on('error', (err) => {
             console.error('Stream error:', err);
             if (!res.headersSent) {

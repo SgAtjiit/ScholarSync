@@ -16,7 +16,7 @@ import Button from "../../components/common/Button";
 import toast from 'react-hot-toast';
 import {
     FileText, ExternalLink, UploadCloud, RefreshCw,
-    Download, Loader2, FileCheck, Eye, EyeOff, RotateCcw
+    Download, Loader2, FileCheck, Eye, EyeOff, RotateCcw, Mail, MessageCircle, Copy, Share2
 } from 'lucide-react';
 
 const DocEditor = ({ 
@@ -37,6 +37,118 @@ const DocEditor = ({
     const [refreshing, setRefreshing] = useState(false);
     const [syncedContent, setSyncedContent] = useState(null); // Content fetched from Google Docs
     const [useIframe, setUseIframe] = useState(true); // Toggle between iframe and synced HTML
+    const [isShareOpen, setIsShareOpen] = useState(false); // Dropdown state
+
+    const getShareableUrls = useCallback(() => {
+        if (!docId) return null;
+
+        const docLink = `https://docs.google.com/document/d/${docId}/edit`;
+        const pdfLink = `https://docs.google.com/document/d/${docId}/export?format=pdf`;
+
+        return {
+            doc: docLink,
+            pdf: pdfLink,
+            selected: submitFormat === 'pdf' ? pdfLink : docLink,
+        };
+    }, [docId, submitFormat]);
+
+    const openExternalLink = (url, target = '_blank') => {
+        try {
+            const opened = window.open(url, target, 'noopener,noreferrer');
+            if (opened) return true;
+        } catch {
+            // fall through to anchor fallback
+        }
+
+        try {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = target;
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const handleDownload = () => {
+        const urls = getShareableUrls();
+        if (!urls) {
+            toast.error('Document not ready for download yet');
+            return;
+        }
+
+        const ok = openExternalLink(urls.selected, '_blank');
+        if (!ok) {
+            toast.error('Could not open download link. Try Copy Link.');
+        }
+    };
+
+    const handleShareWhatsApp = () => {
+        const urls = getShareableUrls();
+        if (!urls) {
+            toast.error('Document not ready for sharing yet');
+            return;
+        }
+
+        const link = urls.selected;
+        const label = submitFormat === 'pdf' ? 'PDF' : 'Doc';
+        const msg = `Hi, sharing my assignment solution (${label}) for ${assignmentTitle}: ${link}`;
+        const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+
+        const ok = openExternalLink(whatsappUrl, '_blank');
+        if (!ok) {
+            toast.error('Could not open WhatsApp. Link copied instead.');
+            navigator.clipboard?.writeText(link).catch(() => {});
+        }
+    };
+
+    const handleShareEmail = () => {
+        const urls = getShareableUrls();
+        if (!urls) {
+            toast.error('Document not ready for sharing yet');
+            return;
+        }
+
+        const link = urls.selected;
+        const label = submitFormat === 'pdf' ? 'PDF' : 'Doc';
+        const subject = `Assignment Solution - ${assignmentTitle}`;
+        const body = [
+            'Hi,',
+            '',
+            `Please find my assignment solution (${label}) below:`,
+            link,
+            '',
+            'Thanks.'
+        ].join('\n');
+
+        const params = new URLSearchParams({ subject, body });
+        const mailtoUrl = `mailto:?${params.toString()}`;
+        const ok = openExternalLink(mailtoUrl, '_self');
+
+        if (!ok) {
+            toast.error('Could not open email app. Link copied instead.');
+            navigator.clipboard?.writeText(link).catch(() => {});
+        }
+    };
+
+    const handleCopyShareLink = async () => {
+        const urls = getShareableUrls();
+        if (!urls) {
+            toast.error('Document not ready for sharing yet');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(urls.selected);
+            toast.success('Share link copied');
+        } catch {
+            toast.error('Could not copy link');
+        }
+    };
 
     /**
      * Create Google Doc from the draft content
@@ -214,110 +326,127 @@ const DocEditor = ({
     return (
         <div className="flex flex-col h-full bg-zinc-900/30">
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-2 sm:p-4 border-b border-white/5 bg-zinc-900/50">
-                <div className="flex items-center gap-2">
-                    <h2 className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                        Draft Solution
-                    </h2>
-                    {docId && (
-                        <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <FileCheck size={10} /> Doc Ready
-                        </span>
-                    )}
+            <div className="flex flex-col gap-3 p-3 sm:p-4 border-b border-white/5 bg-zinc-900/50">
+                {/* Row 1: Header and Editor Actions */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <h2 className="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">
+                            Draft Solution
+                        </h2>
+                        {docId && (
+                            <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <FileCheck size={10} /> Doc Ready
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap items-center">
+                        {onRegenerate && (
+                            <Button onClick={handleRegenerate} size="sm" variant="secondary" className="text-[10px] sm:text-xs px-2 sm:px-3">
+                                <RefreshCw size={12} className="sm:w-3.5 sm:h-3.5 mr-1" />
+                                <span className="hidden xs:inline">Regenerate</span>
+                                <span className="xs:hidden">Regen</span>
+                            </Button>
+                        )}
+
+                        <Button onClick={() => setShowPreview(!showPreview)} size="sm" variant="secondary" className="text-[10px] sm:text-xs px-2 sm:px-3">
+                            {showPreview ? <EyeOff size={12} /> : <Eye size={12} />}
+                            <span className="hidden sm:inline ml-1">{showPreview ? 'Hide' : 'Show'}</span>
+                        </Button>
+
+                        {docId && showPreview && (
+                            <Button onClick={handleRefreshPreview} disabled={refreshing} size="sm" variant="secondary" className="text-[10px] sm:text-xs px-2 sm:px-3 bg-purple-600 hover:bg-purple-500 text-white" title="Sync latest changes from Google Docs">
+                                <RotateCcw size={12} className={refreshing ? 'animate-spin' : ''} />
+                                <span className="hidden sm:inline ml-1">Sync</span>
+                            </Button>
+                        )}
+
+                        {docId && syncedContent && showPreview && (
+                            <Button onClick={toggleViewMode} size="sm" variant="secondary" className="text-[10px] sm:text-xs px-2 sm:px-3" title={useIframe ? 'Show synced view' : 'Show iframe preview'}>
+                                {useIframe ? 'Synced' : 'Preview'}
+                            </Button>
+                        )}
+
+                        {docId && (
+                            <Button onClick={handleEditInDocs} size="sm" variant="secondary" className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs px-2 sm:px-3">
+                                <ExternalLink size={12} className="sm:w-3.5 sm:h-3.5 mr-1" />
+                                <span className="hidden sm:inline">Edit in Docs</span>
+                                <span className="sm:hidden">Edit</span>
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex gap-1.5 sm:gap-2 flex-wrap items-center">
-                    {/* Regenerate */}
-                    {onRegenerate && (
-                        <Button
-                            onClick={handleRegenerate}
-                            size="sm"
-                            variant="secondary"
-                            className="text-[10px] sm:text-xs px-2 sm:px-3"
-                        >
-                            <RefreshCw size={12} className="sm:w-[14px] sm:h-[14px] mr-1" />
-                            <span className="hidden xs:inline">Regenerate</span>
-                            <span className="xs:hidden">Regen</span>
+                {/* Row 2: Export, Share, and Submit Actions */}
+                {docId && (
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pt-3 border-t border-white/10">
+                        <div className="flex gap-2 items-center flex-wrap">
+                            <select 
+                                value={submitFormat}
+                                onChange={(e) => setSubmitFormat(e.target.value)}
+                                className="bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs rounded p-1 sm:p-1.5 border border-zinc-700 outline-none"
+                            >
+                                <option value="doc">As Doc</option>
+                                <option value="pdf">As PDF</option>
+                            </select>
+
+                            <Button onClick={handleDownload} size="sm" variant="secondary" className="text-[10px] sm:text-xs px-2 sm:px-3">
+                                <Download size={12} className="sm:w-3.5 sm:h-3.5 mr-1" />
+                                <span>Download</span>
+                            </Button>
+
+                            {/* Share Dropdown */}
+                            <div className="relative">
+                                <Button 
+                                    onClick={() => setIsShareOpen(!isShareOpen)} 
+                                    size="sm" 
+                                    variant="secondary" 
+                                    className="text-[10px] sm:text-xs px-2 sm:px-3"
+                                >
+                                    <Share2 size={12} className="sm:w-3.5 sm:h-3.5 mr-1" />
+                                    <span>Share</span>
+                                </Button>
+
+                                {isShareOpen && (
+                                    <>
+                                        {/* Invisible overlay to catch clicks outside the dropdown */}
+                                        <div 
+                                            className="fixed inset-0 z-40" 
+                                            onClick={() => setIsShareOpen(false)}
+                                        ></div>
+                                        
+                                        <div className="absolute top-full mt-1 left-0 lg:left-auto lg:right-0 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl py-1 z-50 min-w-[150px]">
+                                            <button 
+                                                onClick={() => { handleShareWhatsApp(); setIsShareOpen(false); }} 
+                                                className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
+                                            >
+                                                <MessageCircle size={14} className="mr-2 text-emerald-400" /> Share on WhatsApp
+                                            </button>
+                                            <button 
+                                                onClick={() => { handleShareEmail(); setIsShareOpen(false); }} 
+                                                className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
+                                            >
+                                                <Mail size={14} className="mr-2 text-blue-400" /> Share via Email
+                                            </button>
+                                            <div className="border-t border-zinc-700 my-1"></div>
+                                            <button 
+                                                onClick={() => { handleCopyShareLink(); setIsShareOpen(false); }} 
+                                                className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
+                                            >
+                                                <Copy size={14} className="mr-2 text-zinc-400" /> Copy Link
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <Button onClick={handleSubmit} loading={submitting} disabled={!docId} size="sm" variant="primary" className="bg-green-600 hover:bg-green-500 text-white text-[10px] sm:text-xs px-2 sm:px-3 w-full lg:w-auto mt-2 lg:mt-0">
+                            <UploadCloud size={12} className="sm:w-4 sm:h-4 mr-1" />
+                            <span>Submit to Classroom</span>
                         </Button>
-                    )}
-
-                    {/* Toggle Preview */}
-                    <Button
-                        onClick={() => setShowPreview(!showPreview)}
-                        size="sm"
-                        variant="secondary"
-                        className="text-[10px] sm:text-xs px-2 sm:px-3"
-                    >
-                        {showPreview ? <EyeOff size={12} /> : <Eye size={12} />}
-                        <span className="hidden sm:inline ml-1">{showPreview ? 'Hide' : 'Show'}</span>
-                    </Button>
-
-                    {/* Refresh Preview */}
-                    {docId && showPreview && (
-                        <Button
-                            onClick={handleRefreshPreview}
-                            disabled={refreshing}
-                            size="sm"
-                            variant="secondary"
-                            className="text-[10px] sm:text-xs px-2 sm:px-3 bg-purple-600 hover:bg-purple-500 text-white"
-                            title="Sync latest changes from Google Docs"
-                        >
-                            <RotateCcw size={12} className={refreshing ? 'animate-spin' : ''} />
-                            <span className="hidden sm:inline ml-1">Sync</span>
-                        </Button>
-                    )}
-
-                    {/* View mode toggle (if synced content exists) */}
-                    {docId && syncedContent && showPreview && (
-                        <Button
-                            onClick={toggleViewMode}
-                            size="sm"
-                            variant="secondary"
-                            className="text-[10px] sm:text-xs px-2 sm:px-3"
-                            title={useIframe ? 'Show synced view' : 'Show iframe preview'}
-                        >
-                            {useIframe ? 'Synced' : 'Preview'}
-                        </Button>
-                    )}
-
-                    {/* Edit in Google Docs */}
-                    {docId && (
-                        <Button
-                            onClick={handleEditInDocs}
-                            size="sm"
-                            variant="secondary"
-                            className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] sm:text-xs px-2 sm:px-3"
-                        >
-                            <ExternalLink size={12} className="sm:w-[14px] sm:h-[14px] mr-1" />
-                            <span className="hidden sm:inline">Edit in Docs</span>
-                            <span className="sm:hidden">Edit</span>
-                        </Button>
-                    )}
-
-                    {/* Format selector */}
-                    <select 
-                        value={submitFormat}
-                        onChange={(e) => setSubmitFormat(e.target.value)}
-                        className="bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs rounded p-1.5 sm:p-2 border border-zinc-700 outline-none"
-                    >
-                        <option value="doc">As Doc</option>
-                        <option value="pdf">As PDF</option>
-                    </select>
-
-                    {/* Submit */}
-                    <Button
-                        onClick={handleSubmit}
-                        loading={submitting}
-                        disabled={!docId}
-                        size="sm"
-                        variant="primary"
-                        className="bg-green-600 hover:bg-green-500 text-white text-[10px] sm:text-xs px-2 sm:px-3"
-                    >
-                        <UploadCloud size={12} className="sm:w-4 sm:h-4 mr-1" />
-                        <span className="hidden sm:inline">Submit to Classroom</span>
-                        <span className="sm:hidden">Submit</span>
-                    </Button>
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Google Doc Preview/Embed */}

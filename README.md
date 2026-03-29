@@ -1,427 +1,551 @@
-# 🎓 ScholarSync - AI Classroom Manager
+# ScholarSync
 
-<div align="center">
+AI-assisted Google Classroom workflow app with a React client and Node/Express backend.
 
-![ScholarSync Logo](client/public/logo.png)
+This README is based on the current codebase in this repository (client + server), not on template docs.
 
-**The Ultimate AI-Powered Google Classroom Assistant**
+## What It Does
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-scholarsync.vercel.app-6366f1?style=for-the-badge&logo=vercel)](https://scholarsync.vercel.app)
-[![React](https://img.shields.io/badge/React-19.2-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js)](https://nodejs.org)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=flat-square&logo=mongodb)](https://mongodb.com)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
+ScholarSync helps a student:
+- Sign in with Google OAuth.
+- Sync courses and assignments from Google Classroom.
+- Open an assignment workspace and extract content from attached files.
+- Generate AI outputs (draft solution, explain, quiz, flashcards).
+- Chat with assignment content (streaming).
+- Create/edit Google Docs drafts, sync edits back, and submit as Doc/PDF to Drive workflow folders.
 
-</div>
+## High-Level Architecture
 
----
+- Frontend: React 19 + Vite (`client/`)
+- Backend: Express 5 + Mongoose (`server/`)
+- Database: MongoDB
+- Integrations: Google OAuth, Google Classroom API, Google Drive/Docs APIs, Groq API
 
-## 📖 About
+### Key Pattern Used
 
-**ScholarSync** is an AI-powered classroom management tool that seamlessly integrates with Google Classroom to help students excel in their coursework. It uses advanced AI models to explain concepts, generate quizzes, create flashcards, and draft solutions for assignments.
+- User Groq API key is stored client-side (`localStorage`) and sent as `x-groq-api-key` header for backend endpoints that need it.
+- AI generation happens in both places:
+  - client-side generation service (`client/src/services/aiGenerationService.js`)
+  - backend generation service (`server/services/aiService.js`)
+- Caching is layered:
+  - extraction/generated cache by `userId + fileId` (`ExtractionCache`)
+  - persisted solutions by `assignmentId + userId + mode` (`Solution`)
 
----
+## Repository Structure
 
-## ✨ Features - Detailed Overview
+- `client/`: Vite React app (UI, workspace, client-side AI services)
+- `server/`: Express API, Google integrations, extraction/generation orchestration
+- `project_metadata.json`: project summary metadata
 
-### 🔗 Google Classroom Sync
-Seamlessly connect your Google account to automatically fetch:
-- **All your enrolled courses** with names and section info
-- **Assignments** with titles, descriptions, due dates, and point values
-- **Attached materials** including PDFs, Google Docs, Slides, and links
-- **Submission status** (turned in, missing, assigned)
-- **Real-time refresh** - Pull latest data anytime with one click
+## Frontend Overview (`client/src`)
 
-### 🧠 AI-Powered Explanations
-Get comprehensive explanations for any assignment:
-- **Concept breakdown** - AI analyzes the assignment and explains each topic
-- **Key formulas** - Important equations with explanations
-- **Examples** - Practical examples to understand concepts
-- **Common mistakes** - Things students often get wrong
-- **Study tips** - How to approach similar problems
+- `App.jsx`
+  - Route map + protected routes.
+  - Main pages: landing, login, dashboard, profile, workspace.
+- `pages/Workspace.jsx`
+  - Core assignment workspace orchestration.
+  - Document selection, extraction, generation, regenerate, tabs.
+- `hooks/useClientSideAI.js`
+  - Main client AI workflow hook:
+    - extraction
+    - generation
+    - chat
+    - cache load/save/clear
+    - Mongo saved generation preload
+- `features/workspace/DocEditor.jsx`
+  - Google Docs draft lifecycle:
+    - create draft doc
+    - preview/sync
+    - share (download/whatsapp/mail/copy)
+    - submit doc/pdf
+- `features/workspace/ChatWithAssignment.jsx`
+  - Chat UI with streaming and chat history persistence.
+- `services/groqService.js`
+  - Direct Groq chat + streaming + usage tracking + pricing dashboard data.
+- `components/dashboard/ApiUsageCharts.jsx`
+  - API usage analytics by day/model and rate-limiter status.
 
-### 📝 Smart Quiz Generator
-Turn any assignment into a practice quiz:
-- **Customizable difficulty** - Easy, Medium, or Hard
-- **Question types** - MCQ, Short Answer, True/False, or Mixed
-- **Adjustable count** - Choose 5 to 20 questions
-- **Instant feedback** - See correct answers with explanations
-- **Score tracking** - Know how well you're doing
-- **Regenerate** - Get a fresh set of questions anytime
+## Backend Overview (`server`)
 
-### 🃏 AI Flashcard Creator
-Automatically generate study flashcards:
-- **Key terms** - Important vocabulary with definitions
-- **Concepts** - Core ideas explained simply
-- **Formulas** - Mathematical/scientific expressions
-- **Flip to reveal** - Interactive card interface
-- **Category tags** - Organized by topic
-- **10-15 cards** per assignment for focused revision
+### Entry
 
-### 💬 Chat with Documents
-Have an interactive conversation with your assignment:
-- **Ask anything** - "Explain question 3", "What formula do I need?"
-- **Context-aware** - AI knows your entire assignment content
-- **Figure understanding** - AI can describe images/diagrams in your PDFs
-- **Streaming responses** - See answers appear in real-time
-- **Chat history** - Conversations are saved per assignment
-- **Clear chat** - Start fresh whenever needed
+- `server.js`
+  - CORS with allowlist from `CLIENT_URL`.
+  - JSON payload limit 50MB.
+  - Mounts route groups:
+    - `/api/auth`
+    - `/api/classroom`
+    - `/api/ai`
+    - `/api/stream`
+    - `/api/cache`
 
-### ✍️ Rich Text Solution Editor
-Draft and refine your solutions with a full-featured editor:
-- **AI-generated drafts** - Get a complete solution as starting point
-- **TipTap editor** - Professional rich text editing
-- **Formatting options**:
-  - Bold, Italic, Underline, Strikethrough
-  - Headings (H1, H2, H3)
-  - Bullet lists and numbered lists
-  - Text alignment (left, center, right, justify)
-  - Font family selection
-  - Text colors
-  - Links and images
-- **Edit freely** - Modify AI-generated content to your style
-- **Regenerate** - Get a new draft if needed
+### Route Groups
 
-### 📤 Submit to Google Classroom
-Submit directly without leaving the app:
-- **Create Google Doc** - Converts your solution to a Google Doc
-- **Auto-attach** - Links the Doc to your assignment submission
-- **Organized folders** - Saves to `ScholarSync/CourseName/AssignmentName`
-- **One-click submit** - Turns in to Google Classroom instantly
-- **Version control** - Multiple drafts are saved separately
+- `routes/authRoutes.js`
+  - Google auth endpoint.
+- `routes/classroomRoutes.js`
+  - classroom sync, extraction trigger, docs workflow, submission.
+- `routes/aiRoutes.js`
+  - generation/chat/history/solution persistence/question verification.
+- `routes/streamRoutes.js`
+  - memory-efficient Drive streaming proxy.
+- `routes/cacheRoutes.js`
+  - extraction/generated cache CRUD + stats.
 
-### 📁 Smart Google Drive Organization
-Automatic file management:
-```
-My Drive/
-└── ScholarSync/
-    ├── Course 1/
-    │   ├── Assignment 1 - Solution.docx
-    │   └── Assignment 2 - Solution.docx
-    └── Course 2/
-        └── Assignment 1 - Solution.docx
-```
-- **Auto-create folders** - Creates course folders if they don't exist
-- **Consistent naming** - Easy to find your work later
-- **No manual organization** - Everything is sorted automatically
+### Core Controllers
 
-### 📄 PDF & Document Extraction
-Advanced content extraction from attachments:
-- **PDF parsing** - Extracts text from PDF files
-- **Vision AI** - Uses LLaMA 4 Scout to describe images/diagrams
-- **Google Docs** - Reads content from linked Docs
-- **Figure descriptions** - AI describes charts, graphs, and diagrams
-- **Multi-file support** - Select which attachment to focus on
+- `controllers/authController.js`
+  - Exchanges OAuth code, verifies ID token, upserts user + refresh token.
+- `controllers/classroomController.js`
+  - Assignment extraction endpoint, Google Docs create/open/sync/submit flows.
+- `controllers/aiController.js`
+  - AI generate/explain/chat endpoints + chat history + save solution + question verification.
+- `controllers/streamController.js`
+  - Streams Drive files; converts DOCX to PDF for client compatibility.
+- `controllers/cacheController.js`
+  - Reads/writes extraction cache and generated content per mode.
 
-### 🔑 BYOK - Bring Your Own Key
-Privacy-first API key management:
-- **Your key, your control** - Use your personal Groq API key
-- **Local storage** - Key stays in your browser's localStorage
-- **Per-request sending** - Sent as a header, never stored server-side
-- **No limits from us** - Use as much as your Groq plan allows
-- **Easy setup** - Just paste your key in Profile settings
+### Core Services
 
-### 📊 Dashboard Features
-Comprehensive assignment management:
-- **Stats overview** - Total, submitted, missing, pending assignments
-- **Filter by status** - All, Pending, Missing, Done
-- **Filter by course** - View assignments from specific courses
-- **Sort options** - Newest, Oldest, Due Date, Title
-- **Pagination** - 9 assignments per page with navigation
-- **Quick access** - Click any assignment to open workspace
+- `services/classroomService.js`
+  - Pulls courses/coursework/submission states from Classroom; upserts `Course` and `Assignment`.
+- `services/aiService.js`
+  - Main backend generation/chat logic; includes multi-agent path for draft/explain.
+- `services/agentService.js`
+  - Validator/solver/reviewer pipeline for higher-quality generated solutions.
+- `services/questionVerifier.js`
+  - Low-token question quality checks (local-first, optional AI verification).
+- `utils/extractor.js`
+  - Material extraction from PDF/image/docx/text with vision-assisted page extraction and question structuring.
 
----
+## Data Models
 
-##  How It Works
+- `User`
+  - Google identity + refresh token + preferences.
+- `Course`
+  - Classroom course mirror.
+- `Assignment`
+  - Coursework metadata + extraction payload + submission status.
+- `Solution`
+  - Saved output by `assignmentId + userId + mode`.
+- `ExtractionCache`
+  - Cached extracted content and generated mode content per `userId + fileId`.
+- `Chat`
+  - Assignment-scoped chat history per user.
 
-### User Flow
+## Verified API Endpoints
 
-```
-1. LOGIN
-   └── Sign in with Google → OAuth 2.0 authentication
-   
-2. DASHBOARD
-   └── Auto-fetch courses & assignments from Google Classroom
-   
-3. SELECT ASSIGNMENT
-   └── Click any assignment card → Opens Workspace
-   
-4. EXTRACTION (Automatic)
-   └── Backend extracts text from PDFs/Docs
-   └── Vision AI describes images & diagrams
-   └── Content stored for AI context
-   
-5. AI WORKSPACE
-   ├── EXPLAIN → Get topic explanations
-   ├── DRAFT → Generate solution document
-   ├── QUIZ → Practice with auto-generated questions
-   ├── FLASHCARDS → Create revision cards
-   └── CHAT → Ask questions about the assignment
-   
-6. EDIT & REFINE
-   └── Rich text editor to modify AI output
-   
-7. SUBMIT
-   └── Creates Google Doc → Attaches to assignment → Turns in
-```
+### Auth
 
-### AI Pipeline
+- `POST /api/auth/google`
 
-```
-User Request → API Key from Header → Groq SDK → LLaMA Model → Response
+### Classroom
 
-For Solutions (Multi-Agent System):
-1. Validator Agent → Cleans & structures content
-2. Solver Agent → Creates step-by-step solutions
-3. Reviewer Agent → Improves quality & formatting
-4. Final HTML → Rendered in Editor
-```
+- `GET /api/classroom/courses/:userId`
+- `GET /api/classroom/assignments/:userId`
+- `POST /api/classroom/scan`
+- `POST /api/classroom/assignments/:assignmentId/extract`
+- `POST /api/classroom/submit`
+- `POST /api/classroom/open-in-docs`
+- `POST /api/classroom/sync-from-docs`
+- `POST /api/classroom/create-draft-doc`
+- `POST /api/classroom/submit-doc`
 
----
+### AI
 
-## �🛠️ Tech Stack
+- `POST /api/ai/generate`
+- `POST /api/ai/explain`
+- `GET /api/ai/solution/:assignmentId`
+- `GET /api/ai/solutions/:assignmentId` (alias)
+- `POST /api/ai/chat`
+- `POST /api/ai/chat-stream`
+- `GET /api/ai/chat-history/:assignmentId`
+- `POST /api/ai/chat-history`
+- `DELETE /api/ai/chat-history/:assignmentId`
+- `POST /api/ai/save-solution`
+- `POST /api/ai/save-extracted`
+- `POST /api/ai/verify-questions`
+- `POST /api/ai/quick-verify-questions`
 
-### Frontend
-- **React 19** - UI Library
-- **Vite** - Build Tool
-- **TailwindCSS 4** - Styling
-- **Framer Motion** - Animations
-- **TipTap** - Rich Text Editor
-- **React Router** - Routing
-- **Axios** - HTTP Client
+### Stream Proxy
 
-### Backend
-- **Node.js** - Runtime
-- **Express 5** - Web Framework
-- **MongoDB** - Database
-- **Mongoose** - ODM
-- **Google APIs** - Classroom, Drive, Docs
-- **Groq SDK** - AI Model Access
-- **PDF-Parse** - PDF Text Extraction
+- `GET /api/stream/download/:fileId`
+- `GET /api/stream/metadata/:fileId`
+- `GET /api/stream/check/:fileId`
 
-### AI Models (via Groq)
-- **LLaMA 3.3 70B Versatile** - Primary model for text generation, solutions, quizzes, flashcards
-- **LLaMA 4 Scout 17B** - Vision model for PDF/image analysis
+### Cache
 
-> **Note**: All AI operations use YOUR Groq API key. The key is sent from the browser with each request and is never stored on our servers.
+- `GET /api/cache/extraction/:fileId`
+- `POST /api/cache/extraction`
+- `PATCH /api/cache/extraction/:fileId/generated`
+- `DELETE /api/cache/extraction/:fileId`
+- `GET /api/cache/stats`
 
----
+## Environment Variables
 
-## 📁 Project Structure
+### Server (`server/.env`)
 
-```
-gcr-app/
-├── client/                    # React Frontend
-│   ├── public/               # Static assets
-│   │   ├── logo.png         # App logo
-│   │   ├── favicon.svg      # Favicon
-│   │   ├── robots.txt       # SEO
-│   │   └── sitemap.xml      # SEO
-│   ├── src/
-│   │   ├── api/             # Axios config
-│   │   ├── components/      # Reusable components
-│   │   │   ├── common/      # Button, GlassCard, etc.
-│   │   │   └── layout/      # Navbar, Footer, Layout
-│   │   ├── context/         # Auth Context
-│   │   ├── features/        # Feature components
-│   │   │   ├── dashboard/   # Stats, Filters, Assignment List
-│   │   │   └── workspace/   # AI Assistant, Editor, Quiz, etc.
-│   │   ├── hooks/           # Custom hooks (useSEO)
-│   │   ├── pages/           # Page components
-│   │   └── routes/          # Protected routes
-│   ├── index.html           # Entry HTML with SEO
-│   ├── package.json
-│   └── vite.config.js
-│
-├── server/                    # Express Backend
-│   ├── config/
-│   │   └── db.js            # MongoDB connection
-│   ├── controllers/
-│   │   ├── aiController.js  # AI generation endpoints
-│   │   ├── authController.js # Google OAuth
-│   │   └── classroomController.js # Classroom API
-│   ├── models/
-│   │   ├── Assignment.js
-│   │   ├── Course.js
-│   │   ├── Solution.js
-│   │   └── User.js
-│   ├── routes/
-│   │   ├── aiRoutes.js
-│   │   ├── authRoutes.js
-│   │   └── classroomRoutes.js
-│   ├── services/
-│   │   ├── aiService.js     # AI model integration
-│   │   ├── classroomService.js
-│   │   └── submissionService.js
-│   ├── utils/
-│   │   ├── extractor.js     # PDF/Doc text extraction
-│   │   └── pdfGenerator.js  # PDF generation
-│   ├── server.js            # Entry point
-│   └── package.json
-│
-└── README.md                  # This file
+Required:
+- `MONGO_URI`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+Common:
+- `PORT` (default `5000`)
+- `CLIENT_URL` (comma-separated allowlist for CORS; defaults to `http://localhost:5173`)
+- `GROQ_MODEL` (optional override)
+- `GROQ_VISION_MODEL` (optional override)
+
+### Client (`client/.env`)
+
+Required:
+- `VITE_SERVER_URL` (example: `http://localhost:5000`)
+- `VITE_GOOGLE_CLIENT_ID`
+
+Runtime requirement:
+- user sets `groq_api_key` in Profile (stored in browser localStorage)
+
+## Local Development
+
+Open two terminals.
+
+### 1) Backend
+
+```bash
+cd server
+npm install
+npm run dev
 ```
 
----
+### 2) Frontend
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+ 
-- MongoDB (local or Atlas)
-- Google Cloud Project with:
-  - OAuth 2.0 credentials
-  - Classroom API enabled
-  - Drive API enabled
-  - Docs API enabled
-
-### Environment Variables
-
-#### Server (.env)
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/scholarsync
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-JWT_SECRET=your_jwt_secret
-CLIENT_URL=http://localhost:5173
+```bash
+cd client
+npm install
+npm run dev
 ```
 
-#### Client (.env)
-```env
-VITE_API_URL=http://localhost:5000
-VITE_GOOGLE_CLIENT_ID=your_client_id
+Then open the Vite URL (usually `http://localhost:5173`).
+
+## Build
+
+Frontend production build:
+
+```bash
+cd client
+npm run build
 ```
 
-### Installation
+## Notes on Current Behavior
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/scholarsync.git
-   cd scholarsync
-   ```
+- Chat supports streaming and can persist assignment chat history.
+- Docs workflow uses Google Docs conversion and sync endpoints, with HTML normalization for code/terminal/table blocks.
+- Streaming proxy avoids loading large files fully in server memory; DOCX files are converted to PDF before returning to client.
+- API usage analytics are tracked locally in browser storage via `groqService` usage tracking.
 
-2. **Install server dependencies**
-   ```bash
-   cd server
-   npm install
-   ```
+## Quick Troubleshooting
 
-3. **Install client dependencies**
-   ```bash
-   cd ../client
-   npm install
-   ```
+- "API key missing/invalid": set Groq key in Profile and retry.
+- "No extracted content": run extraction from Workspace first.
+- Google API errors (401/403): user refresh token may be stale or file permission is restricted.
+- CORS blocked: ensure frontend origin is included in server `CLIENT_URL`.
 
-4. **Start the development servers**
+<!-- ## Sequence Diagrams
 
-   Terminal 1 - Server:
-   ```bash
-   cd server
-   npm run dev
-   ```
+### 1) Login + Classroom Sync
 
-   Terminal 2 - Client:
-   ```bash
-   cd client
-   npm run dev
-   ```
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client (React)
+    participant B as Backend (Express)
+    participant G as Google APIs
+    participant DB as MongoDB
 
-5. **Open the app**
-   
-   Visit `http://localhost:5173`
+    U->>C: Sign in with Google
+    C->>B: POST /api/auth/google (authorization code)
+    B->>G: Exchange code + verify id token
+    B->>DB: Upsert User + refreshToken
+    B-->>C: user profile (_id, name, email, avatar)
 
----
+    C->>B: POST /api/classroom/scan { userId }
+    B->>G: List courses + courseWork + submissions
+    B->>DB: Upsert Course + Assignment status
+    B-->>C: { success, stats }
+```
 
-##  App Screens
+### 2) Workspace Extraction + Generation + Save
 
-### 🏠 Landing Page
-Beautiful marketing page with:
-- Animated gradients and modern UI
-- Feature highlights
-- BYOK explanation
-- Quick login access
+```mermaid
+sequenceDiagram
+    participant C as Client Workspace
+    participant Cache as /api/cache
+    participant B as /api/ai
+    participant Groq as Groq API
+    participant DB as MongoDB
 
-### 📊 Dashboard
-Your command center:
-- Stats cards showing assignment counts
-- Course filter with search
-- Status tabs (All/Pending/Missing/Done)
-- Sort dropdown (Newest/Oldest/Due Date/Title)
-- Assignment cards with due dates
-- Pagination controls
+    C->>Cache: GET /api/cache/extraction/:fileId?userId=...
+    alt cache hit
+        Cache-->>C: extractedContent + generatedContent
+    else cache miss
+        C->>C: extractDocumentContext (stream/proxy + parsing)
+        C->>Cache: POST /api/cache/extraction
+    end
 
-### 🛠️ Workspace
-The AI-powered study area:
-- **Left Panel**: Assignment info, materials list, document selector
-- **Right Panel**: Tabbed interface
-  - **AI Tab**: Mode buttons (Explain/Draft/Quiz/Flashcards/Chat)
-  - **Editor Tab**: Rich text editor with formatting toolbar
-  - **Quiz Tab**: Interactive quiz with scoring
-  - **Flashcards Tab**: Flip cards for revision
-  - **Chat Tab**: Conversation interface with history
+    C->>B: GET /api/ai/solution/:assignmentId?mode=draft&userId=...
+    alt solution exists
+        B-->>C: saved Solution.content
+    else generate new
+        C->>Groq: client-side generateContent(...)
+        C->>Cache: PATCH /api/cache/extraction/:fileId/generated
+        C->>B: POST /api/ai/save-solution
+        B->>DB: upsert Solution(assignmentId,userId,mode)
+        B-->>C: { success: true }
+    end
+```
 
-### 👤 Profile
-Settings and preferences:
-- User info display (name, email, avatar)
-- Groq API Key input (masked by default)
-- Custom system prompt textarea
-- Save buttons for each setting
+### 3) Google Docs Draft + Sync + Submit
 
----
+```mermaid
+sequenceDiagram
+    participant C as DocEditor
+    participant B as Classroom Controller
+    participant G as Google Drive/Docs
+    participant DB as MongoDB
 
-## 🔐 Privacy & Security
+    C->>B: POST /api/classroom/create-draft-doc
+    B->>G: Create/ensure ScholarSync/Drafts folder
+    B->>G: Upload HTML as Google Doc
+    B-->>C: { docId, editLink, previewLink }
 
-- **BYOK Model**: Your Groq API key is stored locally in your browser and sent with each request - never saved on our servers
-- **OAuth 2.0**: Secure Google authentication
-- **No Data Mining**: We don't store or analyze your assignment content
-- **Stateless AI**: API key is passed per-request, not stored server-side
-- **Open Source**: Full transparency in how your data is handled
+    C->>B: POST /api/classroom/sync-from-docs { docId }
+    B->>G: Export doc as HTML
+    B-->>C: normalized HTML content
 
----
+    C->>B: POST /api/classroom/submit-doc { format: doc|pdf }
+    B->>G: Copy doc or export PDF + upload to ScholarSync/course/assignment
+    B->>DB: update assignment status submitted
+    B-->>C: fileId, folderPath, classroomLink -->
+```
 
-## 🤝 Contributing
+## API Examples
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+All examples use `BASE_URL=http://localhost:5000/api` and JSON request bodies.
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### 1) Google Auth
 
----
+Request:
 
-## 📄 License
+```bash
+curl -X POST "$BASE_URL/auth/google" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"<google_oauth_code>"}'
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Typical response:
 
----
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "65f...",
+    "name": "Student Name",
+    "email": "student@example.com",
+    "avatar": "https://..."
+  }
+}
+```
 
-## 👨‍💻 Author
+### 2) Scan Classroom
 
-**Shrish Gupta**
+Request:
 
-- Website: [profile.shrish.in.net](https://profile.shrish.in.net)
-- GitHub: [SgAtjiit](https://github.com/SgAtjiit)
+```bash
+curl -X POST "$BASE_URL/classroom/scan" \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"65f..."}'
+```
 
----
+Typical response:
 
-## 🙏 Acknowledgments
+```json
+{
+  "success": true,
+  "stats": {
+    "submitted": 3,
+    "missing": 1,
+    "assigned": 8,
+    "total": 12
+  }
+}
+```
 
-- Google Classroom API
-- [Groq](https://groq.com) for lightning-fast AI inference
-- [Meta LLaMA](https://llama.meta.com) for the powerful language models
-- Vercel for hosting
-- All the amazing open-source libraries used in this project
+### 3) Generate Content (Backend route)
 
----
+Request:
 
-<div align="center">
+```bash
+curl -X POST "$BASE_URL/ai/generate" \
+  -H "Content-Type: application/json" \
+  -H "x-groq-api-key: <your_groq_key>" \
+  -d '{
+    "assignmentId":"65a...",
+    "userId":"65f...",
+    "mode":"quiz",
+    "questionCount":5,
+    "difficulty":"medium",
+    "questionType":"mixed"
+  }'
+```
 
-**⭐ Star this repo if you found it helpful! ⭐**
+Typical response shape:
 
-Made with ❤️ for students everywhere
+```json
+{
+  "_id": "66b...",
+  "assignmentId": "65a...",
+  "userId": "65f...",
+  "mode": "quiz",
+  "content": {
+    "questions": [
+      {
+        "id": 1,
+        "type": "mcq",
+        "question": "..."
+      }
+    ]
+  }
+}
+```
 
-</div>
+### 4) Save Client-Generated Solution
+
+Request:
+
+```bash
+curl -X POST "$BASE_URL/ai/save-solution" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assignmentId":"65a...",
+    "userId":"65f...",
+    "mode":"draft",
+    "content":"<h2>Question 1</h2><p>...</p>",
+    "source":"client-side"
+  }'
+```
+
+Typical response:
+
+```json
+{
+  "success": true,
+  "solutionId": "66c...",
+  "mode": "draft"
+}
+```
+
+### 5) Load Saved Solution by Mode
+
+Request:
+
+```bash
+curl "$BASE_URL/ai/solution/65a...?mode=draft&userId=65f..."
+```
+
+Typical response (or `null` if not found):
+
+```json
+{
+  "_id": "66c...",
+  "assignmentId": "65a...",
+  "userId": "65f...",
+  "mode": "draft",
+  "content": "<h2>Question 1</h2><p>...</p>",
+  "createdAt": "2026-03-30T10:00:00.000Z"
+}
+```
+
+### 6) Extraction Cache APIs
+
+Get cache:
+
+```bash
+curl "$BASE_URL/cache/extraction/<fileId>?userId=65f..."
+```
+
+Save extraction:
+
+```bash
+curl -X POST "$BASE_URL/cache/extraction" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId":"65f...",
+    "fileId":"1Abc...",
+    "fileName":"assignment.pdf",
+    "assignmentId":"65a...",
+    "extractedContent": {
+      "content":"...",
+      "pageCount": 6,
+      "hasImages": true,
+      "tokenEstimate": 5400
+    }
+  }'
+```
+
+### 7) Create Draft Google Doc
+
+Request:
+
+```bash
+curl -X POST "$BASE_URL/classroom/create-draft-doc" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assignmentId":"65a...",
+    "userId":"65f...",
+    "title":"Assignment_Solution",
+    "courseName":"Physics",
+    "content":"<h2>Question 1</h2><p>...</p>"
+  }'
+```
+
+Typical response:
+
+```json
+{
+  "success": true,
+  "docId": "1DocId...",
+  "editLink": "https://docs.google.com/document/d/1DocId.../edit",
+  "previewLink": "https://docs.google.com/document/d/1DocId.../preview",
+  "folderPath": "ScholarSync/Drafts"
+}
+```
+
+### 8) Submit Doc/PDF to Drive Workflow
+
+Request:
+
+```bash
+curl -X POST "$BASE_URL/classroom/submit-doc" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "docId":"1DocId...",
+    "assignmentId":"65a...",
+    "userId":"65f...",
+    "format":"pdf",
+    "courseName":"Physics",
+    "assignmentTitle":"Wave Assignment"
+  }'
+```
+
+Typical response:
+
+```json
+{
+  "success": true,
+  "fileId": "1DriveFile...",
+  "fileName": "Wave Assignment_Solution_2026-03-30.pdf",
+  "format": "pdf",
+  "folderPath": "ScholarSync/Physics/Wave Assignment",
+  "classroomLink": "https://classroom.google.com/..."
+}
+```

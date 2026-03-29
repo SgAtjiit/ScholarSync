@@ -50,6 +50,18 @@ export const useClientSideAI = ({ userId }) => {
     // Refs
     const extractionAbortRef = useRef(null);
 
+    const pickNonEmptyGeneratedModes = (generated = {}) => {
+        const modes = ['draft', 'explain', 'quiz', 'flashcards'];
+        const picked = {};
+        for (const mode of modes) {
+            const value = generated?.[mode];
+            if (value !== undefined && value !== null && value !== '') {
+                picked[mode] = value;
+            }
+        }
+        return picked;
+    };
+
     // Subscribe to rate limiter
     useEffect(() => {
         const unsubscribe = subscribeToRateLimiter(setRateLimiterState);
@@ -97,7 +109,10 @@ export const useClientSideAI = ({ userId }) => {
                 
                 // Load cached generated content
                 if (cacheResult.data.generatedContent) {
-                    setGeneratedContent(cacheResult.data.generatedContent);
+                    const nonEmptyModes = pickNonEmptyGeneratedModes(cacheResult.data.generatedContent);
+                    if (Object.keys(nonEmptyModes).length > 0) {
+                        setGeneratedContent(prev => ({ ...prev, ...nonEmptyModes }));
+                    }
                 }
                 
                 console.log('Loaded from cache:', cacheResult.data.fileName);
@@ -191,14 +206,15 @@ export const useClientSideAI = ({ userId }) => {
             
             // Save to cache in background (only for single doc)
             if (!appendMode) {
-                saveExtraction(fileId, userId, fileName, assignmentId, result)
-                    .then(res => {
-                        if (res.success) {
-                            setIsCached(true);
-                            console.log('Extraction cached successfully');
-                        }
-                    })
-                    .catch(err => console.error('Failed to cache extraction:', err));
+                try {
+                    const saveResult = await saveExtraction(fileId, userId, fileName, assignmentId, result);
+                    if (saveResult.success) {
+                        setIsCached(true);
+                        console.log('Extraction cached successfully');
+                    }
+                } catch (err) {
+                    console.error('Failed to cache extraction:', err);
+                }
             }
             
             refreshUsage();
@@ -227,6 +243,7 @@ export const useClientSideAI = ({ userId }) => {
      */
     const generate = useCallback(async ({
         mode,
+        assignmentId,
         quizOptions,
         assignmentTitle,
         courseName,
@@ -239,6 +256,28 @@ export const useClientSideAI = ({ userId }) => {
         if (!forceRefresh && generatedContent[mode]) {
             console.log(`Using cached ${mode} from state`);
             return { content: generatedContent[mode], cached: true };
+        }
+
+        const resolvedAssignmentId = assignmentId || currentAssignmentId;
+
+        // Check MongoDB cache before calling AI (unless force refresh)
+        if (!forceRefresh && resolvedAssignmentId && userId) {
+            try {
+                const cachedRes = await api.get(`/ai/solution/${resolvedAssignmentId}`, {
+                    params: { mode, userId }
+                });
+                
+                if (cachedRes.data?.content) {
+                    setGeneratedContent(prev => ({
+                        ...prev,
+                        [mode]: cachedRes.data.content,
+                    }));
+                    return { content: cachedRes.data.content, cached: true, source: 'mongodb' };
+                }
+            } catch (error) {
+                // Ignore cache miss/errors and continue to generation
+                console.warn(`No MongoDB cache for ${mode}:`, error?.response?.status || error.message);
+            }
         }
         
         checkApiKey();
@@ -291,6 +330,18 @@ export const useClientSideAI = ({ userId }) => {
                     .catch(err => console.error(`Failed to cache ${mode}:`, err));
             }
 
+            // Persist generated content to MongoDB so it survives refresh/reopen
+            if (resolvedAssignmentId && userId) {
+                api.post('/ai/save-solution', {
+                    assignmentId: resolvedAssignmentId,
+                    userId,
+                    mode,
+                    content: result.content,
+                    generatedAt: new Date().toISOString(),
+                    source: 'client-side',
+                }).catch(err => console.error(`Failed to persist ${mode} to MongoDB:`, err));
+            }
+
             refreshUsage();
             return result;
         } catch (error) {
@@ -300,7 +351,40 @@ export const useClientSideAI = ({ userId }) => {
             setIsGenerating(false);
             setGeneratingMode(null);
         }
-    }, [extractedContent, generatedContent, currentFileId, userId, checkApiKey, refreshUsage]);
+    }, [extractedContent, generatedContent, currentFileId, currentAssignmentId, userId, checkApiKey, refreshUsage]);
+
+    /**
+     * Load saved generated solutions from MongoDB (all modes)
+     * @param {string} assignmentId
+     */
+    const loadSavedGenerations = useCallback(async (assignmentId) => {
+        if (!assignmentId || !userId) return { loaded: false };
+
+        const modes = ['explain', 'draft', 'quiz', 'flashcards'];
+        const loaded = {};
+
+        await Promise.all(
+            modes.map(async (mode) => {
+                try {
+                    const res = await api.get(`/ai/solution/${assignmentId}`, {
+                        params: { mode, userId }
+                    });
+                    if (res.data?.content) {
+                        loaded[mode] = res.data.content;
+                    }
+                } catch {
+                    // Ignore missing mode
+                }
+            })
+        );
+
+        if (Object.keys(loaded).length > 0) {
+            setGeneratedContent(prev => ({ ...prev, ...loaded }));
+            return { loaded: true, data: loaded };
+        }
+
+        return { loaded: false };
+    }, [userId]);
 
     /**
      * Chat with document content
@@ -337,13 +421,14 @@ export const useClientSideAI = ({ userId }) => {
     const saveToBackend = useCallback(async ({ assignmentId, mode, content }) => {
         const response = await api.post('/ai/save-solution', {
             assignmentId,
+            userId,
             mode,
             content: typeof content === 'object' ? JSON.stringify(content) : content,
             generatedAt: new Date().toISOString(),
             source: 'client-side',
         });
         return response.data;
-    }, []);
+    }, [userId]);
 
     /**
      * Cancel ongoing extraction
@@ -439,6 +524,7 @@ export const useClientSideAI = ({ userId }) => {
         
         // Cache
         loadFromCache,
+        loadSavedGenerations,
         clearCacheAndRefresh,
         isCached,
         isLoadingCache,

@@ -10,21 +10,29 @@ import Workspace from "./pages/Workspace";
 import Profile from "./pages/Profile";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
-import React, { useEffect } from "react"; // ✨ ADDED: useEffect import
+import React, { useEffect, useRef } from "react";
 import { Toaster, toast } from "react-hot-toast"; // ✨ ADDED: toast import
-// In your routes file
-import ClientSideWorkspace from "./pages/ClientSideWorkspace";
 
 // ✨ MODIFIED: ProtectedRoute with Login Alert
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const hasShownAuthToastRef = useRef(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      // Jab koi bina login kiye access karega toh ye message aayega
-      toast.error(" Please login to access the Dashboard.", {
-        id: "auth-error", // ID prevents duplicate toasts
+    if (loading) return;
+
+    if (!user && !hasShownAuthToastRef.current) {
+      hasShownAuthToastRef.current = true;
+      toast.dismiss("auth-error");
+      toast.error("Please login to access the Dashboard.", {
+        id: "auth-error",
       });
+      return;
+    }
+
+    if (user) {
+      hasShownAuthToastRef.current = false;
+      toast.dismiss("auth-error");
     }
   }, [user, loading]);
 
@@ -89,14 +97,6 @@ function App() {
             }
           />
 
-          {/* <Route
-            path="/workspace/:assignmentId"
-            element={
-              <ProtectedRoute>
-                <ClientSideWorkspace />
-              </ProtectedRoute>
-            }
-          /> */}
           <Route path="/workspace/:assignmentId" element={ 
               <ProtectedRoute> 
                <Workspace />
