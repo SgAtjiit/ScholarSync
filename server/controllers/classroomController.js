@@ -364,14 +364,20 @@ export const submitToClassroom = async (req, res) => {
             console.warn("Could not share file globally:", shareError.message);
         }
 
-        // 11. Get the classroom assignment link for manual submission
-        let classroomLink = assignment.alternateLink;
-        if (!classroomLink && assignment.courseId && assignment.googleClassroomAssignmentId) {
-            classroomLink = `https://classroom.google.com/c/${assignment.courseId}/a/${assignment.googleClassroomAssignmentId}/submissions/by-status/and-target/all`;
+        // 11. Resolve Classroom link (prefer explicit assignment-level links)
+        const resolvedCourseId = assignment.courseId || assignment.courseGoogleId || assignment.classroomCourseId;
+        const resolvedWorkId = assignment.googleClassroomAssignmentId || assignment.classroomId || assignment.courseWorkId || assignment.courseworkId;
+
+        let classroomLink = null;
+        if (assignment.alternateLink && String(assignment.alternateLink).includes('classroom.google.com')) {
+            classroomLink = assignment.alternateLink;
+        } else if (resolvedCourseId && resolvedWorkId) {
+            classroomLink = `https://classroom.google.com/c/${resolvedCourseId}/a/${resolvedWorkId}/submissions/by-status/and-target/all`;
+        } else if (resolvedCourseId) {
+            classroomLink = `https://classroom.google.com/c/${resolvedCourseId}`;
         }
-        if (!classroomLink && assignment.courseId) {
-            classroomLink = `https://classroom.google.com/c/${assignment.courseId}`;
-        }
+
+        console.log('classroomLink resolved:', classroomLink);
 
         // 12. Update database
         assignment.status = 'submitted';
@@ -931,8 +937,20 @@ export const submitDoc = async (req, res) => {
 
         console.log(`Submitted ${format.toUpperCase()}: ${uploadedFileName} to ${folderPath}`);
 
-        // 6. Build Classroom link
-        const classroomLink = `https://classroom.google.com/c/${assignment.courseId}/a/${assignment.classroomId}/submissions/by-status/and-target/all`;
+        // 6. Resolve Classroom link (prefer explicit assignment-level links)
+        const resolvedCourseId = assignment.courseId || assignment.courseGoogleId || assignment.classroomCourseId;
+        const resolvedWorkId = assignment.classroomId || assignment.googleClassroomAssignmentId || assignment.courseWorkId || assignment.courseworkId;
+
+        let classroomLink = null;
+        if (assignment.alternateLink && String(assignment.alternateLink).includes('classroom.google.com')) {
+            classroomLink = assignment.alternateLink;
+        } else if (resolvedCourseId && resolvedWorkId) {
+            classroomLink = `https://classroom.google.com/c/${resolvedCourseId}/a/${resolvedWorkId}/submissions/by-status/and-target/all`;
+        } else if (resolvedCourseId) {
+            classroomLink = `https://classroom.google.com/c/${resolvedCourseId}`;
+        }
+
+        console.log('classroomLink resolved:', classroomLink);
 
         res.json({
             success: true,
