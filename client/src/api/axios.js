@@ -22,7 +22,18 @@ api.interceptors.response.use(
   (err) => {
     try {
       const cfg = err.config || {};
-      console.warn('[API ERROR]', cfg.method?.toUpperCase(), cfg.url, err.response?.status, err.response?.data);
+      const status = err.response?.status;
+      const url = cfg.url || '';
+      const isExpectedCacheMiss =
+        status === 404 &&
+        typeof url === 'string' &&
+        url.includes('/cache/extraction/');
+
+      if (isExpectedCacheMiss) {
+        return Promise.reject(err);
+      }
+
+      console.warn('[API ERROR]', cfg.method?.toUpperCase(), cfg.url, status, err.response?.data);
     } catch (e) {
       console.warn('[API ERROR] (failed to log) ', err.message);
     }

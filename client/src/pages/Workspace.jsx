@@ -79,7 +79,7 @@ const Workspace = () => {
   const [selectedDocIds, setSelectedDocIds] = useState([]);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
-  const cacheLookupKeyRef = useRef(null);
+  const attemptedCacheLookupsRef = useRef(new Set());
 
   const clientAI = useClientSideAI({ userId: user?._id });
 
@@ -200,26 +200,31 @@ const Workspace = () => {
   useEffect(() => {
     const selectedDocId = selectedDocIds[0];
     if (
-      selectedDocIds.length === 1 &&
-      user?._id &&
-      !clientAI.isExtracting &&
-      !clientAI.extractedContent &&
-      selectedDocId
+      selectedDocIds.length !== 1 ||
+      !user?._id ||
+      clientAI.isExtracting ||
+      clientAI.extractedContent ||
+      !selectedDocId
     ) {
-      const cacheLookupKey = `${assignmentId}:${selectedDocId}`;
-      if (cacheLookupKeyRef.current === cacheLookupKey) {
-        return;
-      }
-
-      cacheLookupKeyRef.current = cacheLookupKey;
-
-      clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
-        .then(result => {
-          if (result.loaded) {
-            toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
-          }
-        });
+      return;
     }
+
+    const cacheLookupKey = `${assignmentId}:${selectedDocId}`;
+    if (attemptedCacheLookupsRef.current.has(cacheLookupKey)) {
+      return;
+    }
+
+    attemptedCacheLookupsRef.current.add(cacheLookupKey);
+
+    clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
+      .then(result => {
+        if (result.loaded) {
+          toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
+        }
+      })
+      .catch(() => {
+        // The hook already normalizes cache misses and errors.
+      });
   }, [selectedDocIds, user?._id, assignmentId, clientAI.isExtracting, clientAI.extractedContent, clientAI.loadFromCache]);
 
   useEffect(() => {
