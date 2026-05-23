@@ -15,6 +15,13 @@ connectDB();
 
 const app = express();
 
+// Simple request logger to help diagnose cron / 404 issues
+app.use((req, res, next) => {
+  const origin = req.headers.origin || req.get('origin') || 'no-origin';
+  console.log(`[REQ] ${new Date().toISOString()} - ${req.method} ${req.originalUrl} - origin: ${origin} - ip: ${req.ip}`);
+  next();
+});
+
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
@@ -37,6 +44,11 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.get('/', (req, res) => res.send('ScholarSync API is running...'));
+
+// Health endpoint for uptime checks (cron-job.org / ping services)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/classroom', classroomRoutes); // Handles Courses & Assignments

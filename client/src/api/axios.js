@@ -16,4 +16,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Log failed responses to help diagnose deployed 4xx/5xx issues
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    try {
+      const cfg = err.config || {};
+      console.warn('[API ERROR]', cfg.method?.toUpperCase(), cfg.url, err.response?.status, err.response?.data);
+    } catch (e) {
+      console.warn('[API ERROR] (failed to log) ', err.message);
+    }
+    return Promise.reject(err);
+  }
+);
+
 export default api;
