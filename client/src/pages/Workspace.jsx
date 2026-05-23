@@ -79,8 +79,6 @@ const Workspace = () => {
   const [selectedDocIds, setSelectedDocIds] = useState([]);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
-  const attemptedCacheLookupsRef = useRef(new Set());
-
   const clientAI = useClientSideAI({ userId: user?._id });
 
   const getMaterialLink = (m) => {
@@ -196,36 +194,6 @@ const Workspace = () => {
       setSelectedDocIds([firstDocId]);
     }
   }, [allDocMaterials, selectedDocIds.length]);
-
-  useEffect(() => {
-    const selectedDocId = selectedDocIds[0];
-    if (
-      selectedDocIds.length !== 1 ||
-      !user?._id ||
-      clientAI.isExtracting ||
-      clientAI.extractedContent ||
-      !selectedDocId
-    ) {
-      return;
-    }
-
-    const cacheLookupKey = `${assignmentId}:${selectedDocId}`;
-    if (attemptedCacheLookupsRef.current.has(cacheLookupKey)) {
-      return;
-    }
-
-    attemptedCacheLookupsRef.current.add(cacheLookupKey);
-
-    clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
-      .then(result => {
-        if (result.loaded) {
-          toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
-        }
-      })
-      .catch(() => {
-        // The hook already normalizes cache misses and errors.
-      });
-  }, [selectedDocIds, user?._id, assignmentId, clientAI.isExtracting, clientAI.extractedContent, clientAI.loadFromCache]);
 
   useEffect(() => {
     if (!assignmentId || !user?._id) return;
@@ -485,15 +453,13 @@ const Workspace = () => {
             
             <Button
               onClick={() => handleExtract(!!clientAI.extractedContent)}
-              disabled={clientAI.isExtracting || clientAI.isLoadingCache || selectedDocIds.length === 0}
+              disabled={clientAI.isExtracting || selectedDocIds.length === 0}
               className="w-full text-base py-3"
               variant="primary"
               size="lg"
             >
               {clientAI.isExtracting ? (
                 <><Loader2 size={20} className="animate-spin mr-2" />Extracting...</>
-              ) : clientAI.isLoadingCache ? (
-                <><Loader2 size={20} className="animate-spin mr-2" />Loading...</>
               ) : clientAI.extractedContent ? (
                 <><RefreshCw size={18} className="mr-2" />Re-Extract Content</>
               ) : (
@@ -516,7 +482,6 @@ const Workspace = () => {
                 <div className="text-green-400/80 mt-1.5 pl-6 text-[11px]">
                   {clientAI.extractedContent.pageCount} pages analyzed
                   {clientAI.extractedContent.documents?.length > 1 && ` from ${clientAI.extractedContent.documents.length} docs`}.
-                  {clientAI.isCached && ' (Cached)'}
                 </div>
               </div>
             )}

@@ -1,8 +1,7 @@
 /**
  * useClientSideAI Hook
- * Main hook for client-side AI processing with MongoDB caching.
+ * Main hook for client-side AI processing.
  * Combines PDF extraction, vision processing, and AI generation.
- * Caches results to avoid redundant processing.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -10,12 +9,6 @@ import { extractDocumentContext } from '../services/contextExtractor';
 import { generateContent, generateContentStream, chatWithContent } from '../services/aiGenerationService';
 import { hasApiKey, getUsageSummary } from '../services/groqService';
 import { withRateLimit, getRateLimiterState, subscribeToRateLimiter } from '../services/rateLimiter';
-import { 
-    getCachedExtraction, 
-    saveExtraction, 
-    saveGeneratedContent as saveCachedGeneration,
-    clearCache 
-} from '../services/cacheService';
 import api from '../api/axios';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
@@ -41,26 +34,10 @@ export const useClientSideAI = ({ userId }) => {
     const [rateLimiterState, setRateLimiterState] = useState(getRateLimiterState());
     const [usageSummary, setUsageSummary] = useState(null);
     
-    // Cache state
-    const [isCached, setIsCached] = useState(false);
-    const [isLoadingCache, setIsLoadingCache] = useState(false);
-    const [currentFileId, setCurrentFileId] = useState(null);
     const [currentAssignmentId, setCurrentAssignmentId] = useState(null);
 
     // Refs
     const extractionAbortRef = useRef(null);
-
-    const pickNonEmptyGeneratedModes = (generated = {}) => {
-        const modes = ['draft', 'explain', 'quiz', 'flashcards'];
-        const picked = {};
-        for (const mode of modes) {
-            const value = generated?.[mode];
-            if (value !== undefined && value !== null && value !== '') {
-                picked[mode] = value;
-            }
-        }
-        return picked;
-    };
 
     // Subscribe to rate limiter
     useEffect(() => {
@@ -84,58 +61,12 @@ export const useClientSideAI = ({ userId }) => {
     }, []);
 
     /**
-     * Load cached extraction and generated content
-     * @param {Object} options - Load options
-     * @param {string} options.fileId - Google Drive file ID
-     * @param {string} options.assignmentId - Assignment ID
-     * @returns {Promise<{loaded: boolean, data?: object}>}
-     */
-    const loadFromCache = useCallback(async ({ fileId, assignmentId }) => {
-        if (!fileId || !userId) {
-            return { loaded: false };
-        }
-
-        setIsLoadingCache(true);
-        setCurrentFileId(fileId);
-        setCurrentAssignmentId(assignmentId);
-
-        try {
-            const cacheResult = await getCachedExtraction(fileId, userId);
-            
-            if (cacheResult.cached && cacheResult.data) {
-                // Load cached extraction
-                setExtractedContent(cacheResult.data.extractedContent);
-                setIsCached(true);
-                
-                // Load cached generated content
-                if (cacheResult.data.generatedContent) {
-                    const nonEmptyModes = pickNonEmptyGeneratedModes(cacheResult.data.generatedContent);
-                    if (Object.keys(nonEmptyModes).length > 0) {
-                        setGeneratedContent(prev => ({ ...prev, ...nonEmptyModes }));
-                    }
-                }
-                
-                console.log('Loaded from cache:', cacheResult.data.fileName);
-                return { loaded: true, data: cacheResult.data };
-            }
-            
-            return { loaded: false };
-        } catch (error) {
-            console.error('Failed to load cache:', error);
-            return { loaded: false, error: error.message };
-        } finally {
-            setIsLoadingCache(false);
-        }
-    }, [userId]);
-
-    /**
-     * Extract content from a document (checks cache first)
+     * Extract content from a document
      * @param {Object} options - Extraction options
      * @param {string} options.fileId - Google Drive file ID
      * @param {string} options.fileName - File name
      * @param {string} options.assignmentId - Assignment ID
      * @param {boolean} options.useVision - Whether to use vision API
-     * @param {boolean} options.forceRefresh - Skip cache and re-extract
      * @param {boolean} options.appendMode - Append to existing content (for multi-doc extraction)
      * @returns {Promise<Object>}
      */
@@ -144,18 +75,7 @@ export const useClientSideAI = ({ userId }) => {
             throw new Error('File ID is required');
         }
 
-        setCurrentFileId(fileId);
         setCurrentAssignmentId(assignmentId);
-
-        // Check cache first (unless force refresh)
-        if (!forceRefresh && !appendMode) {
-            const cacheResult = await loadFromCache({ fileId, assignmentId });
-            if (cacheResult.loaded) {
-                setExtractionProgress({ stage: 'complete', progress: 100, message: 'Loaded from cache!' });
-                setTimeout(() => setExtractionProgress(null), 1500);
-                return cacheResult.data.extractedContent;
-            }
-        }
 
         setIsExtracting(true);
         setExtractionProgress({ stage: 'starting', progress: 0, message: 'Starting extraction...' });
@@ -191,7 +111,6 @@ export const useClientSideAI = ({ userId }) => {
                     documents: [...(extractedContent.documents || [{ name: 'Previous' }]), { name: fileName, pageCount: result.pageCount }],
                 };
                 setExtractedContent(mergedContent);
-                setIsCached(false);
                 refreshUsage();
                 return result; // Return individual result for progress tracking
             }
@@ -202,20 +121,6 @@ export const useClientSideAI = ({ userId }) => {
                 documents: [{ name: fileName, pageCount: result.pageCount }],
             };
             setExtractedContent(contentWithDocInfo);
-            setIsCached(false);
-            
-            // Save to cache in background (only for single doc)
-            if (!appendMode) {
-                try {
-                    const saveResult = await saveExtraction(fileId, userId, fileName, assignmentId, result);
-                    if (saveResult.success) {
-                        setIsCached(true);
-                        console.log('Extraction cached successfully');
-                    }
-                } catch (err) {
-                    console.error('Failed to cache extraction:', err);
-                }
-            }
             
             refreshUsage();
             return result;
@@ -226,7 +131,7 @@ export const useClientSideAI = ({ userId }) => {
             setIsExtracting(false);
             setExtractionProgress(null);
         }
-    }, [userId, checkApiKey, refreshUsage, loadFromCache]);
+    }, [userId, checkApiKey, refreshUsage]);
 
     /**
      * Generate AI content (draft, explain, quiz, flashcards)
@@ -252,33 +157,7 @@ export const useClientSideAI = ({ userId }) => {
         onChunk,
         forceRefresh = false,
     }) => {
-        // Check if already cached in state (unless force refresh)
-        if (!forceRefresh && generatedContent[mode]) {
-            console.log(`Using cached ${mode} from state`);
-            return { content: generatedContent[mode], cached: true };
-        }
-
         const resolvedAssignmentId = assignmentId || currentAssignmentId;
-
-        // Check MongoDB cache before calling AI (unless force refresh)
-        if (!forceRefresh && resolvedAssignmentId && userId) {
-            try {
-                const cachedRes = await api.get(`/ai/solution/${resolvedAssignmentId}`, {
-                    params: { mode, userId }
-                });
-                
-                if (cachedRes.data?.content) {
-                    setGeneratedContent(prev => ({
-                        ...prev,
-                        [mode]: cachedRes.data.content,
-                    }));
-                    return { content: cachedRes.data.content, cached: true, source: 'mongodb' };
-                }
-            } catch (error) {
-                // Ignore cache miss/errors and continue to generation
-                console.warn(`No MongoDB cache for ${mode}:`, error?.response?.status || error.message);
-            }
-        }
         
         checkApiKey();
 
@@ -319,17 +198,6 @@ export const useClientSideAI = ({ userId }) => {
                 [mode]: result.content,
             }));
 
-            // Save generated content to cache in background
-            if (currentFileId) {
-                saveCachedGeneration(currentFileId, userId, mode, result.content)
-                    .then(res => {
-                        if (res.success) {
-                            console.log(`${mode} cached successfully`);
-                        }
-                    })
-                    .catch(err => console.error(`Failed to cache ${mode}:`, err));
-            }
-
             // Persist generated content to MongoDB so it survives refresh/reopen
             if (resolvedAssignmentId && userId) {
                 api.post('/ai/save-solution', {
@@ -351,7 +219,7 @@ export const useClientSideAI = ({ userId }) => {
             setIsGenerating(false);
             setGeneratingMode(null);
         }
-    }, [extractedContent, generatedContent, currentFileId, currentAssignmentId, userId, checkApiKey, refreshUsage]);
+    }, [extractedContent, generatedContent, currentAssignmentId, userId, checkApiKey, refreshUsage]);
 
     /**
      * Load saved generated solutions from MongoDB (all modes)
@@ -447,42 +315,7 @@ export const useClientSideAI = ({ userId }) => {
     const clearContent = useCallback(() => {
         setExtractedContent(null);
         setGeneratedContent({});
-        setIsCached(false);
     }, []);
-
-    /**
-     * Clear cache and optionally re-extract
-     * @param {string} mode - Specific mode to clear ('extraction', 'quiz', etc.) or 'all'
-     * @returns {Promise<{success: boolean}>}
-     */
-    const clearCacheAndRefresh = useCallback(async (mode = 'all') => {
-        if (!currentFileId) {
-            return { success: false, error: 'No file loaded' };
-        }
-
-        try {
-            const result = await clearCache(currentFileId, userId, mode);
-            
-            if (result.success) {
-                if (mode === 'all' || mode === 'extraction') {
-                    setExtractedContent(null);
-                    setGeneratedContent({});
-                    setIsCached(false);
-                } else {
-                    setGeneratedContent(prev => {
-                        const updated = { ...prev };
-                        delete updated[mode];
-                        return updated;
-                    });
-                }
-            }
-            
-            return result;
-        } catch (error) {
-            console.error('Failed to clear cache:', error);
-            return { success: false, error: error.message };
-        }
-    }, [currentFileId, userId]);
 
     /**
      * Check if content has been generated for a mode
@@ -521,14 +354,6 @@ export const useClientSideAI = ({ userId }) => {
         
         // Persistence
         saveToBackend,
-        
-        // Cache
-        loadFromCache,
-        loadSavedGenerations,
-        clearCacheAndRefresh,
-        isCached,
-        isLoadingCache,
-        currentFileId,
         
         // Utilities
         clearContent,

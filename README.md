@@ -27,9 +27,7 @@ ScholarSync helps a student:
 - AI generation happens in both places:
   - client-side generation service (`client/src/services/aiGenerationService.js`)
   - backend generation service (`server/services/aiService.js`)
-- Caching is layered:
-  - extraction/generated cache by `userId + fileId` (`ExtractionCache`)
-  - persisted solutions by `assignmentId + userId + mode` (`Solution`)
+- Persisted solutions are stored by `assignmentId + userId + mode` (`Solution`).
 
 ## Repository Structure
 
@@ -50,7 +48,6 @@ ScholarSync helps a student:
     - extraction
     - generation
     - chat
-    - cache load/save/clear
     - Mongo saved generation preload
 - `features/workspace/DocEditor.jsx`
   - Google Docs draft lifecycle:
@@ -77,7 +74,6 @@ ScholarSync helps a student:
     - `/api/classroom`
     - `/api/ai`
     - `/api/stream`
-    - `/api/cache`
 
 ### Route Groups
 
@@ -89,8 +85,6 @@ ScholarSync helps a student:
   - generation/chat/history/solution persistence/question verification.
 - `routes/streamRoutes.js`
   - memory-efficient Drive streaming proxy.
-- `routes/cacheRoutes.js`
-  - extraction/generated cache CRUD + stats.
 
 ### Core Controllers
 
@@ -102,8 +96,6 @@ ScholarSync helps a student:
   - AI generate/explain/chat endpoints + chat history + save solution + question verification.
 - `controllers/streamController.js`
   - Streams Drive files; converts DOCX to PDF for client compatibility.
-- `controllers/cacheController.js`
-  - Reads/writes extraction cache and generated content per mode.
 
 ### Core Services
 
@@ -129,7 +121,6 @@ ScholarSync helps a student:
 - `Solution`
   - Saved output by `assignmentId + userId + mode`.
 - `ExtractionCache`
-  - Cached extracted content and generated mode content per `userId + fileId`.
 - `Chat`
   - Assignment-scoped chat history per user.
 

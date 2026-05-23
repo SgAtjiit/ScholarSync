@@ -3,6 +3,21 @@ import Assignment from '../models/Assignment.js';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
 
+const runWithConcurrency = async (items, limit, iterator) => {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await iterator(items[currentIndex], currentIndex);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
 export const scanClassroomService = async (userId) => {
 
   const user = await User.findById(userId);
@@ -61,39 +76,34 @@ export const scanClassroomService = async (userId) => {
       const assignments = workRes.data.courseWork || [];
       nextPageToken = workRes.data.nextPageToken;
 
-      for (const work of assignments) {
-
-        // --- NEW LOGIC: Fetch Submission Status ---
-        // We must fetch the submission to know if it's turned in or missing
-        let status = 'assigned'; // Default
+      await runWithConcurrency(assignments, 5, async (work) => {
+        // Fetch submission status so we can mark submitted/missing accurately.
+        let status = 'assigned';
 
         try {
           const submissionRes = await classroom.courses.courseWork.studentSubmissions.list({
             courseId: course.id,
             courseWorkId: work.id,
-            userId: 'me' // 'me' refers to the authenticated user
+            userId: 'me'
           });
 
           const submission = submissionRes.data.studentSubmissions ? submissionRes.data.studentSubmissions[0] : null;
 
           if (submission) {
-            const state = submission.state; // NEW, CREATED, TURNED_IN, RETURNED, RECLAIMED_BY_STUDENT
+            const state = submission.state;
 
             if (state === 'TURNED_IN' || state === 'RETURNED') {
               status = 'submitted';
-            } else {
-              // Check for Missing (Not turned in + Past Due Date)
-              if (work.dueDate) {
-                const due = new Date(work.dueDate.year, work.dueDate.month - 1, work.dueDate.day);
-                if (work.dueTime) {
-                  due.setHours(work.dueTime.hours || 0, work.dueTime.minutes || 0, 0);
-                } else {
-                  due.setHours(23, 59, 59); // Default to end of day
-                }
+            } else if (work.dueDate) {
+              const due = new Date(work.dueDate.year, work.dueDate.month - 1, work.dueDate.day);
+              if (work.dueTime) {
+                due.setHours(work.dueTime.hours || 0, work.dueTime.minutes || 0, 0);
+              } else {
+                due.setHours(23, 59, 59);
+              }
 
-                if (due < new Date()) {
-                  status = 'missing';
-                }
+              if (due < new Date()) {
+                status = 'missing';
               }
             }
           }
@@ -101,12 +111,9 @@ export const scanClassroomService = async (userId) => {
           console.error(`Failed to fetch submission for work ${work.id}:`, err.message);
         }
 
-        // Update counters
         stats[status]++;
         stats.total++;
 
-        // --- Database Update ---
-        // We use findOneAndUpdate to ensure status is updated even if assignment exists
         await Assignment.findOneAndUpdate(
           {
             userId: user._id,
@@ -122,11 +129,11 @@ export const scanClassroomService = async (userId) => {
             dueDate: work.dueDate ? new Date(work.dueDate.year, work.dueDate.month - 1, work.dueDate.day) : null,
             alternateLink: work.alternateLink,
             materials: work.materials,
-            status: status // <--- Saving the calculated status
+            status: status
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         );
-      }
+      });
     } while (nextPageToken);
   }
 
