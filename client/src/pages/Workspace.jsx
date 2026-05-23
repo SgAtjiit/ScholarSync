@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
@@ -79,6 +79,7 @@ const Workspace = () => {
   const [selectedDocIds, setSelectedDocIds] = useState([]);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [pendingQuizRegenerate, setPendingQuizRegenerate] = useState(false);
+  const cacheLookupKeyRef = useRef(null);
 
   const clientAI = useClientSideAI({ userId: user?._id });
 
@@ -134,11 +135,6 @@ const Workspace = () => {
   const docFileId = docMaterial?.driveFile?.driveFile?.id || docMaterial?.driveFile?.id || null;
   const allDocMaterials = getDocumentMaterials(assignment?.materials);
   
-  if (selectedDocIds.length === 0 && allDocMaterials.length > 0) {
-    const firstDocId = allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id;
-    setSelectedDocIds([firstDocId]);
-  }
-
   const toggleDocSelection = (docId) => {
     setSelectedDocIds(prev => {
       if (prev.includes(docId)) {
@@ -195,15 +191,36 @@ const Workspace = () => {
   }, [assignmentId, user]);
 
   useEffect(() => {
-    if (selectedDocIds.length === 1 && user?._id && !clientAI.isExtracting && !clientAI.extractedContent) {
-      clientAI.loadFromCache({ fileId: selectedDocIds[0], assignmentId })
+    if (selectedDocIds.length === 0 && allDocMaterials.length > 0) {
+      const firstDocId = allDocMaterials[0].driveFile?.driveFile?.id || allDocMaterials[0].driveFile?.id;
+      setSelectedDocIds([firstDocId]);
+    }
+  }, [allDocMaterials, selectedDocIds.length]);
+
+  useEffect(() => {
+    const selectedDocId = selectedDocIds[0];
+    if (
+      selectedDocIds.length === 1 &&
+      user?._id &&
+      !clientAI.isExtracting &&
+      !clientAI.extractedContent &&
+      selectedDocId
+    ) {
+      const cacheLookupKey = `${assignmentId}:${selectedDocId}`;
+      if (cacheLookupKeyRef.current === cacheLookupKey) {
+        return;
+      }
+
+      cacheLookupKeyRef.current = cacheLookupKey;
+
+      clientAI.loadFromCache({ fileId: selectedDocId, assignmentId })
         .then(result => {
           if (result.loaded) {
             toast.success('Loaded cached content', { id: 'cache-load', duration: 2000 });
           }
         });
     }
-  }, [selectedDocIds, user?._id, assignmentId, clientAI]);
+  }, [selectedDocIds, user?._id, assignmentId, clientAI.isExtracting, clientAI.extractedContent, clientAI.loadFromCache]);
 
   useEffect(() => {
     if (!assignmentId || !user?._id) return;
@@ -217,7 +234,7 @@ const Workspace = () => {
       .catch(() => {
         // Ignore cache load errors silently
       });
-  }, [assignmentId, user?._id, clientAI]);
+  }, [assignmentId, user?._id, clientAI.loadSavedGenerations]);
 
   const handleExtract = useCallback(async (forceRefresh = false) => {
     if (selectedDocIds.length === 0) {
