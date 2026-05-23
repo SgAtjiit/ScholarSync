@@ -195,20 +195,6 @@ const Workspace = () => {
     }
   }, [allDocMaterials, selectedDocIds.length]);
 
-  useEffect(() => {
-    if (!assignmentId || !user?._id) return;
-
-    clientAI.loadSavedGenerations(assignmentId)
-      .then((result) => {
-        if (result.loaded) {
-          toast.success('Loaded saved AI results', { id: 'saved-solutions-load', duration: 1500 });
-        }
-      })
-      .catch(() => {
-        // Ignore cache load errors silently
-      });
-  }, [assignmentId, user?._id, clientAI.loadSavedGenerations]);
-
   const handleExtract = useCallback(async (forceRefresh = false) => {
     if (selectedDocIds.length === 0) {
       toast.error("No documents selected");
