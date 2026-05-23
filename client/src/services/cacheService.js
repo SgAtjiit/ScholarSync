@@ -17,13 +17,16 @@ const CACHE_VERSION = 1;
 export const getCachedExtraction = async (fileId, userId) => {
   try {
     const response = await api.get(`/cache/extraction/${fileId}`, {
-      params: { userId }
+      params: { userId },
+      validateStatus: (status) => status === 200 || status === 404,
     });
-    return response.data;
-  } catch (error) {
-    if (error.response?.status === 404) {
+
+    if (response.status === 404) {
       return { cached: false };
     }
+
+    return response.data;
+  } catch (error) {
     console.error('Cache fetch error:', error);
     return { cached: false, error: error.message };
   }
