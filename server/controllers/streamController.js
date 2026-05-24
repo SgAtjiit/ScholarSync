@@ -8,6 +8,8 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const { convert } = require('docx2pdf-converter');
+const PDFDocument = require('pdfkit');
+const mammoth = require('mammoth');
 
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
@@ -20,6 +22,31 @@ const toPdfFileName = (name = 'document.docx') => {
     return `${parsed.name || 'document'}.pdf`;
 };
 
+const createPdfFromText = (text = '', title = 'Document') => {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        const pdf = new PDFDocument({ margin: 50 });
+
+        pdf.on('data', (chunk) => chunks.push(chunk));
+        pdf.on('end', () => resolve(Buffer.concat(chunks)));
+        pdf.on('error', reject);
+
+        pdf.fontSize(16).text(title || 'Document', { underline: true });
+        pdf.moveDown();
+        pdf.fontSize(11);
+
+        const normalizedText = String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+        const printableText = normalizedText.length > 0 ? normalizedText : 'No extractable text found in this DOCX file.';
+
+        pdf.text(printableText, {
+            align: 'left',
+            lineGap: 2,
+        });
+
+        pdf.end();
+    });
+};
+
 const convertDocxBufferToPdf = async (docxBuffer, originalName) => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'scholarsync-docx-'));
     const inputName = originalName?.toLowerCase().endsWith('.docx') ? originalName : `${originalName || 'document'}.docx`;
@@ -30,10 +57,15 @@ const convertDocxBufferToPdf = async (docxBuffer, originalName) => {
         await fs.writeFile(inputPath, docxBuffer);
         try {
             convert(inputPath, outputPath);
+            return await fs.readFile(outputPath);
         } catch (error) {
-            throw new Error(`DOCX to PDF conversion failed for ${originalName || 'document.docx'}: ${error.message}. Ensure conversion dependencies are installed for this OS.`);
+            const fallback = await mammoth.extractRawText({ buffer: docxBuffer });
+            const fallbackPdf = await createPdfFromText(fallback.value, originalName || 'document.docx');
+            console.warn(
+                `DOCX conversion dependency unavailable for ${originalName || 'document.docx'}. Using text-only fallback PDF. Original error: ${error.message}`
+            );
+            return fallbackPdf;
         }
-        return await fs.readFile(outputPath);
     } finally {
         await fs.rm(tempDir, { recursive: true, force: true });
     }
