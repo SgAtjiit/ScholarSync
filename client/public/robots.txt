@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://scholarsync.vercel.app/sitemap.xml
+Sitemap: https://scholarsync.shrish.in.net/sitemap.xml
 
 # Crawl-delay
 Crawl-delay: 1
