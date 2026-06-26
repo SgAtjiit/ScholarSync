@@ -1,0 +1,32 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "docx2pdf-converter": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^166.0.0",
+    "html-to-text": "^9.0.5",
+    "mammoth": "^1.11.0",
+    "mongoose": "^9.0.0",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.17.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

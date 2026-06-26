@@ -1,0 +1,15 @@
+# robots.txt for ScholarSync
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://scholarsync.vercel.app/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Disallow private routes
+Disallow: /api/
+Disallow: /workspace/
+Disallow: /profile
+Disallow: /dashboard
