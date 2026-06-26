@@ -16,7 +16,7 @@ const Landing = () => {
     return (
         <main className="min-h-screen bg-[#09090b] text-white overflow-x-hidden selection:bg-indigo-500/30">
 
-            {/* Navbar */}
+            {/ Navbar /}
             <header>
                 <nav className="fixed top-0 w-full z-50 bg-zinc-900/80 backdrop-blur-lg border-b border-white/5" aria-label="Main navigation">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
@@ -36,9 +36,9 @@ const Landing = () => {
                 </nav>
             </header>
 
-            {/* Hero Section */}
+            {/ Hero Section /}
             <section className="relative pt-24 pb-12 sm:pt-32 sm:pb-20 lg:pt-48 lg:pb-32 px-4 sm:px-6" aria-labelledby="hero-heading">
-                {/* Background Gradients */}
+                {/ Background Gradients /}
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-indigo-600/20 rounded-full blur-[80px] sm:blur-[120px] -z-10" aria-hidden="true" />
                 <div className="absolute bottom-0 right-0 w-[200px] sm:w-[400px] h-[200px] sm:h-[400px] bg-purple-600/10 rounded-full blur-[60px] sm:blur-[100px] -z-10" aria-hidden="true" />
 
@@ -68,7 +68,7 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* Features Grid */}
+            {/ Features Grid /}
             <section className="py-12 sm:py-24 bg-zinc-900/30 border-y border-white/5" aria-labelledby="features-heading">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6">
                     <div className="text-center mb-8 sm:mb-16">
@@ -121,7 +121,7 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* BYOK Section */}
+            {/ BYOK Section /}
             <section className="py-12 sm:py-24 px-4 sm:px-6" aria-labelledby="byok-heading">
                 <div className="max-w-5xl mx-auto bg-gradient-to-br from-zinc-900 to-zinc-900/50 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-12 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 sm:w-64 h-32 sm:h-64 bg-indigo-500/10 rounded-full blur-2xl sm:blur-3xl -translate-y-1/2 translate-x-1/2" aria-hidden="true" />
@@ -133,10 +133,10 @@ const Landing = () => {
                             </div>
                             <h2 id="byok-heading" className="text-xl sm:text-3xl font-bold">Bring Your Own Key — Client-Side Encryption</h2>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-                                ScholarSync uses a **Bring-Your-Own-Key (BYOK)** model. Provide your own API key for **Groq, OpenAI, Google Gemini, Anthropic, OpenRouter**, or connect a **local Ollama instance** key-free.
+                                ScholarSync uses a Bring-Your-Own-Key (BYOK) model. Provide your own API key for Groq, OpenAI, Google Gemini, Anthropic, OpenRouter, or connect a local Ollama instance key-free.
                             </p>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-                                Keys are **AES-256-GCM encrypted in the browser** using PBKDF2 derived from a student-chosen PIN. Plainsource credentials only live in session memory and fly directly to model endpoints—**never saved or visible to ScholarSync servers.**
+                                Keys are AES-256-GCM encrypted in the browser using PBKDF2 derived from a student-chosen PIN. Plainsource credentials only live in session memory and fly directly to model endpoints—never saved or visible to ScholarSync servers.
                             </p>
                             <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-zinc-300">
                                 <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400" aria-hidden="true" /> AES-256-GCM + PBKDF2 Web Crypto Key Vault</li>
@@ -148,7 +148,7 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* SEO Content Section */}
+            {/ SEO Content Section /}
             <section className="py-12 sm:py-20 px-4 sm:px-6 bg-zinc-900/20" aria-labelledby="seo-heading">
                 <div className="max-w-4xl mx-auto text-center space-y-6">
                     <h2 id="seo-heading" className="text-xl sm:text-2xl font-bold text-zinc-300">
