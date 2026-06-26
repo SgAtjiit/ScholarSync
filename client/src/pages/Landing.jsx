@@ -8,9 +8,9 @@ const Landing = () => {
     const navigate = useNavigate();
 
     // Set page title and meta for SEO
-    useSEO({ 
+    useSEO({
         title: null, // Use default title for homepage
-        description: 'ScholarSync is the ultimate AI classroom manager for Google Classroom. Get AI explanations, quizzes, flashcards, and draft solutions for your assignments.' 
+        description: 'ScholarSync is the ultimate AI classroom manager for Google Classroom. Get AI explanations, quizzes, flashcards, and draft solutions for your assignments.'
     });
 
     return (
@@ -63,9 +63,7 @@ const Landing = () => {
                         <Button size="lg" className="h-10 sm:h-12 px-6 sm:px-8 text-sm sm:text-base shadow-lg shadow-indigo-500/25 w-full sm:w-auto" onClick={() => navigate('/login')}>
                             Start Learning Now <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px] ml-2" aria-hidden="true" />
                         </Button>
-                        <button onClick={() => navigate('/login')} className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm sm:text-base font-medium transition-all border border-white/5">
-                            View Demo
-                        </button>
+
                     </div>
                 </div>
             </section>
@@ -135,7 +133,7 @@ const Landing = () => {
                             </div>
                             <h2 id="byok-heading" className="text-xl sm:text-3xl font-bold">Bring Your Own Key — Client-Side Encryption</h2>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-                                ScholarSync uses a **Bring-Your-Own-Key (BYOK)** model. Provide your own API key for **Groq, OpenAI, Google Gemini, Anthropic, OpenRouter**, or connect a **local Ollama instance** key-free. 
+                                ScholarSync uses a **Bring-Your-Own-Key (BYOK)** model. Provide your own API key for **Groq, OpenAI, Google Gemini, Anthropic, OpenRouter**, or connect a **local Ollama instance** key-free.
                             </p>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
                                 Keys are **AES-256-GCM encrypted in the browser** using PBKDF2 derived from a student-chosen PIN. Plainsource credentials only live in session memory and fly directly to model endpoints—**never saved or visible to ScholarSync servers.**
@@ -158,11 +156,11 @@ const Landing = () => {
                     </h2>
                     <div className="text-sm text-zinc-500 space-y-4 text-left max-w-3xl mx-auto">
                         <p>
-                            <strong className="text-zinc-400">ScholarSync</strong> is a premium AI study manager and assignment assistant that integrates Google Classroom, Google Drive, custom local file uploads, and your own LLM keys. 
+                            <strong className="text-zinc-400">ScholarSync</strong> is a premium AI study manager and assignment assistant that integrates Google Classroom, Google Drive, custom local file uploads, and your own LLM keys.
                             With advanced client-side execution, you get vision-powered document parsing, quiz generators, flashcard compilers, and a Socratic teaching assistant in a secure, unified workspace.
                         </p>
                         <p>
-                            Designed for privacy-minded students, the app supports complete classroom data-teardown, client-side AES key encryption, memory-safe file streams, and interactive document editing. 
+                            Designed for privacy-minded students, the app supports complete classroom data-teardown, client-side AES key encryption, memory-safe file streams, and interactive document editing.
                             Use local offline LLMs with Ollama or major providers like Groq, Anthropic, Gemini, OpenAI, and OpenRouter.
                         </p>
                     </div>
