@@ -1,3 +1,8 @@
+
+
+
+
+
 /**
  * DocEditor - Google Docs Based Editor
  * 
@@ -19,9 +24,9 @@ import {
     Download, Loader2, FileCheck, Eye, EyeOff, RotateCcw, Mail, MessageCircle, Copy, Share2
 } from 'lucide-react';
 
-const DocEditor = ({ 
-    initialContent, 
-    assignmentId, 
+const DocEditor = ({
+    initialContent,
+    assignmentId,
     assignmentTitle = "Assignment",
     courseName = "Course",
     onRegenerate,
@@ -65,13 +70,8 @@ const DocEditor = ({
     }, [docId, submitFormat]);
 
     const openExternalLink = (url, target = '_blank') => {
-        try {
-            const opened = window.open(url, target, 'noopener,noreferrer');
-            if (opened) return true;
-        } catch {
-            // fall through to anchor fallback
-        }
-
+        // Try the anchor tag approach first as it is the most reliable for downloads
+        // and protocol handlers (like mailto/whatsapp), preventing duplicate actions.
         try {
             const a = document.createElement('a');
             a.href = url;
@@ -82,6 +82,13 @@ const DocEditor = ({
             document.body.removeChild(a);
             return true;
         } catch {
+            // Fall back to window.open if the DOM manipulation fails
+            try {
+                const opened = window.open(url, target, 'noopener,noreferrer');
+                if (opened) return true;
+            } catch {
+                // both failed
+            }
             return false;
         }
     };
@@ -114,7 +121,7 @@ const DocEditor = ({
         const ok = openExternalLink(whatsappUrl, '_blank');
         if (!ok) {
             toast.error('Could not open WhatsApp. Link copied instead.');
-            navigator.clipboard?.writeText(link).catch(() => {});
+            navigator.clipboard?.writeText(link).catch(() => { });
         }
     };
 
@@ -143,7 +150,7 @@ const DocEditor = ({
 
         if (!ok) {
             toast.error('Could not open email app. Link copied instead.');
-            navigator.clipboard?.writeText(link).catch(() => {});
+            navigator.clipboard?.writeText(link).catch(() => { });
         }
     };
 
@@ -224,8 +231,8 @@ const DocEditor = ({
 
         setSubmitting(true);
         const toastId = toast.loading(
-            submitFormat === 'pdf' 
-                ? 'Converting to PDF and uploading...' 
+            submitFormat === 'pdf'
+                ? 'Converting to PDF and uploading...'
                 : 'Uploading document to Drive...'
         );
 
@@ -240,15 +247,15 @@ const DocEditor = ({
             });
 
             toast.success(
-                `Saved to Drive: ${res.data.folderPath}`, 
+                `Saved to Drive: ${res.data.folderPath}`,
                 { id: toastId, duration: 3000 }
             );
 
             // Open Classroom for manual attachment
             if (res.data.classroomLink) {
-                toast(`Opening Google Classroom to attach your file...`, { 
+                toast(`Opening Google Classroom to attach your file...`, {
                     icon: '📎',
-                    duration: 3000 
+                    duration: 3000
                 });
                 setTimeout(() => {
                     window.open(res.data.classroomLink, '_blank');
@@ -280,7 +287,7 @@ const DocEditor = ({
      */
     const handleRefreshPreview = async () => {
         if (!docId) return;
-        
+
         setRefreshing(true);
         const toastId = toast.loading('Syncing changes from Google Docs...');
 
@@ -359,10 +366,10 @@ const DocEditor = ({
                                 </Button>
                             )}
 
-                            <Button 
+                            <Button
                                 onClick={() => window.open(docUrl, '_blank')}
-                                size="sm" 
-                                variant="primary" 
+                                size="sm"
+                                variant="primary"
                                 className="bg-green-600 hover:bg-green-500 text-white text-[10px] sm:text-xs px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5"
                             >
                                 <Download size={12} />
@@ -449,7 +456,7 @@ const DocEditor = ({
                 {docId && (
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pt-3 border-t border-white/10">
                         <div className="flex gap-2 items-center flex-wrap">
-                            <select 
+                            <select
                                 value={submitFormat}
                                 onChange={(e) => setSubmitFormat(e.target.value)}
                                 className="bg-zinc-800 text-zinc-300 text-[10px] sm:text-xs rounded p-1 sm:p-1.5 border border-zinc-700 outline-none"
@@ -465,10 +472,10 @@ const DocEditor = ({
 
                             {/* Share Dropdown */}
                             <div className="relative">
-                                <Button 
-                                    onClick={() => setIsShareOpen(!isShareOpen)} 
-                                    size="sm" 
-                                    variant="secondary" 
+                                <Button
+                                    onClick={() => setIsShareOpen(!isShareOpen)}
+                                    size="sm"
+                                    variant="secondary"
                                     className="text-[10px] sm:text-xs px-2 sm:px-3"
                                 >
                                     <Share2 size={12} className="sm:w-3.5 sm:h-3.5 mr-1" />
@@ -478,27 +485,27 @@ const DocEditor = ({
                                 {isShareOpen && (
                                     <>
                                         {/* Invisible overlay to catch clicks outside the dropdown */}
-                                        <div 
-                                            className="fixed inset-0 z-40" 
+                                        <div
+                                            className="fixed inset-0 z-40"
                                             onClick={() => setIsShareOpen(false)}
                                         ></div>
-                                        
+
                                         <div className="absolute top-full mt-1 left-0 lg:left-auto lg:right-0 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl py-1 z-50 min-w-[150px]">
-                                            <button 
-                                                onClick={() => { handleShareWhatsApp(); setIsShareOpen(false); }} 
+                                            <button
+                                                onClick={() => { handleShareWhatsApp(); setIsShareOpen(false); }}
                                                 className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
                                             >
                                                 <MessageCircle size={14} className="mr-2 text-emerald-400" /> Share on WhatsApp
                                             </button>
-                                            <button 
-                                                onClick={() => { handleShareEmail(); setIsShareOpen(false); }} 
+                                            <button
+                                                onClick={() => { handleShareEmail(); setIsShareOpen(false); }}
                                                 className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
                                             >
                                                 <Mail size={14} className="mr-2 text-blue-400" /> Share via Email
                                             </button>
                                             <div className="border-t border-zinc-700 my-1"></div>
-                                            <button 
-                                                onClick={() => { handleCopyShareLink(); setIsShareOpen(false); }} 
+                                            <button
+                                                onClick={() => { handleCopyShareLink(); setIsShareOpen(false); }}
                                                 className="w-full text-left px-3 py-2 text-[11px] sm:text-xs text-zinc-300 hover:bg-zinc-700 hover:text-white flex items-center transition-colors"
                                             >
                                                 <Copy size={14} className="mr-2 text-zinc-400" /> Copy Link
@@ -574,7 +581,7 @@ const DocEditor = ({
                                     font-family: monospace;
                                 }
                             `}</style>
-                            <div 
+                            <div
                                 className="synced-doc-content"
                                 dangerouslySetInnerHTML={{ __html: syncedContent }}
                             />
@@ -590,7 +597,7 @@ const DocEditor = ({
                     )
                 ) : showPreview && !docId ? (
                     // Fallback: Show HTML content while doc is being created
-                    <div 
+                    <div
                         className="prose prose-invert max-w-none p-4 overflow-y-auto h-full min-h-[500px]"
                         dangerouslySetInnerHTML={{ __html: initialContent }}
                     />
@@ -604,7 +611,7 @@ const DocEditor = ({
             {/* Helper text */}
             <div className="p-2 border-t border-white/5 bg-zinc-900/50">
                 <p className="text-[10px] sm:text-xs text-zinc-500 text-center">
-                    {docId 
+                    {docId
                         ? "✨ Click 'Edit in Docs' to add tables, images, and rich formatting. Changes save automatically!"
                         : "Creating your document..."}
                 </p>

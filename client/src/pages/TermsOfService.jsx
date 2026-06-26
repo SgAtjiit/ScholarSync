@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, CheckCircle, AlertTriangle, Scale, Ban, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileText, CheckCircle, AlertTriangle, Scale, Ban, RefreshCw, Lock } from "lucide-react";
 import Footer from "../components/layout/Footer";
 import useSEO from "../hooks/useSEO";
 
@@ -64,34 +64,49 @@ const TermsOfService = () => {
                             title="Use of Service"
                         >
                             <p className="text-zinc-400 leading-relaxed mb-4">
-                                ScholarSync is an educational tool designed to assist students with their coursework. By using our service, you agree to:
+                                ScholarSync is an educational tool designed to assist students with their coursework and learning. By using our service, you agree to:
                             </p>
                             <ul className="space-y-3 text-zinc-400">
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
-                                    <span>Use the service only for lawful educational purposes</span>
+                                    <span>Use the service only for lawful educational purposes and in compliance with school rules.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
-                                    <span>Not share your account credentials with others</span>
+                                    <span>Maintain responsibility for any files manually uploaded to our storage (Supabase) or compiled to Google Drive.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
-                                    <span>Comply with your institution's academic integrity policies</span>
+                                    <span>Comply with your institution's academic integrity policies.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
-                                    <span>Not attempt to exploit, hack, or disrupt the service</span>
+                                    <span>Provide valid and secure API keys when utilizing the Bring-Your-Own-Key (BYOK) features.</span>
                                 </li>
                             </ul>
                         </TermsSection>
 
                         <TermsSection
                             icon={<AlertTriangle className="text-yellow-400" />}
-                            title="Academic Integrity Disclaimer"
+                            title="Academic Integrity & Socratic Assistant"
                         >
+                            <p className="text-zinc-400 leading-relaxed mb-3">
+                                ScholarSync is designed as a socratic study aid, not a tool for plagiarism or cheating. Features like the **AI Socratic Tutor** are explicitly structured to guide you step-by-step using conceptual hints, templates, and worked analogies rather than spoon-feeding direct homework answers.
+                            </p>
                             <p className="text-zinc-400 leading-relaxed">
-                                ScholarSync is designed to be a learning aid, not a tool for academic dishonesty. AI-generated solutions, explanations, and quizzes are meant to help you understand concepts and should be used responsibly. <strong className="text-zinc-300">You are solely responsible for ensuring that your use of ScholarSync complies with your institution's academic integrity policies.</strong> We are not liable for any academic consequences resulting from misuse of the service.
+                                AI-generated explanations, quizzes, and flashcards are meant to deepen your understanding. <strong className="text-zinc-300">You are solely responsible for ensuring that your use of ScholarSync aligns with your school's or institution's honor code and academic integrity rules.</strong> We are not liable for any disciplinary or academic consequences resulting from misuse of this software.
+                            </p>
+                        </TermsSection>
+
+                        <TermsSection
+                            icon={<Lock className="text-indigo-400" />}
+                            title="Bring-Your-Own-Key (BYOK) Responsibility"
+                        >
+                            <p className="text-zinc-400 leading-relaxed mb-3">
+                                ScholarSync operates on a Bring-Your-Own-Key (BYOK) model. Users supply their own API keys from Groq, OpenAI, Google, Anthropic, or OpenRouter, or run a local Ollama endpoint.
+                            </p>
+                            <p className="text-zinc-400 leading-relaxed">
+                                You agree that you are solely responsible for any costs, usage limits, rate limits, or account suspensions associated with the third-party API keys you provide. ScholarSync is not responsible for provider charges or key misuse.
                             </p>
                         </TermsSection>
 
@@ -105,19 +120,15 @@ const TermsOfService = () => {
                             <ul className="space-y-3 text-zinc-400">
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                                    <span>Submitting AI-generated content as entirely your own work without proper review and modification</span>
+                                    <span>Submitting raw, unreviewed AI outputs directly as your original academic work.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                                    <span>Using the service to complete work for others in exchange for payment</span>
+                                    <span>Exploiting the vision document extraction system or trying to circumvent prompt restrictions (e.g. attempting to extract hidden answer keys).</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                                    <span>Attempting to reverse engineer or exploit the AI systems</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                                    <span>Using the service for any illegal or harmful purposes</span>
+                                    <span>Reverse engineering, scraping, or launching denial-of-service attempts against ScholarSync endpoints.</span>
                                 </li>
                             </ul>
                         </TermsSection>
@@ -127,7 +138,7 @@ const TermsOfService = () => {
                             title="Service Availability"
                         >
                             <p className="text-zinc-400 leading-relaxed">
-                                We strive to provide uninterrupted access to ScholarSync, but we do not guarantee that the service will be available at all times. We may modify, suspend, or discontinue any part of the service at any time without prior notice. We are not liable for any losses or damages resulting from service interruptions.
+                                We strive to provide consistent access to ScholarSync, but we do not guarantee uninterrupted availability. As a client-side execution platform, service is subject to your network connection and third-party API availability. We may modify or discontinue any part of the service without notice.
                             </p>
                         </TermsSection>
 
@@ -136,7 +147,7 @@ const TermsOfService = () => {
                             title="Intellectual Property"
                         >
                             <p className="text-zinc-400 leading-relaxed">
-                                The ScholarSync name, logo, and all related content are the property of ScholarSync. You retain ownership of your original content and any modifications you make to AI-generated content. By using our service, you grant us a limited license to process your content solely for the purpose of providing the service.
+                                The ScholarSync name, logo, and client codebase are properties of the project owners. You retain ownership of your original uploaded assignments, your manual study materials, and any finalized documents you compile and sync back to your personal Google Drive or Google Docs accounts.
                             </p>
                         </TermsSection>
 

@@ -52,86 +52,85 @@ const PrivacyPolicy = () => {
                     <div className="space-y-8">
                         <PolicySection
                             icon={<Eye className="text-blue-400" />}
-                            title="Information We Collect"
+                            title="Information We Collect & Store"
                         >
                             <p className="text-zinc-400 leading-relaxed mb-4">
-                                When you use ScholarSync, we collect the following information:
+                                When you use ScholarSync, we process and/or store the following datasets depending on your chosen integrations:
                             </p>
                             <ul className="space-y-3 text-zinc-400">
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google Account Information:</strong> Your name, email address, and profile picture when you sign in with Google.</span>
+                                    <span><strong className="text-zinc-300">Google Account Info:</strong> Your name, email, and avatar picture are retrieved when signing in.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google Classroom Data:</strong> Assignment titles, descriptions, due dates, course information, and attachments that you choose to sync.</span>
+                                    <span><strong className="text-zinc-300">Google Classroom Sync Data:</strong> Assignment details, instructions, files, and materials synced to MongoDB for display on the dashboard.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">API Keys:</strong> If you provide your own Groq API key, it is stored locally in your browser and never transmitted to our servers.</span>
+                                    <span><strong className="text-zinc-300">Manual Assignment Files:</strong> Local PDFs uploaded for custom assignments are stored in our secure object bucket (Supabase Storage).</span>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
+                                    <span><strong className="text-zinc-300">Encrypted API Keys (BYOK):</strong> Your provider API keys (Groq, OpenAI, Gemini, Anthropic, OpenRouter) are **encrypted in your browser** using AES-256-GCM + PBKDF2 derived from a PIN you choose. ScholarSync servers never store or see your keys in plaintext.</span>
                                 </li>
                             </ul>
                         </PolicySection>
 
                         <PolicySection
                             icon={<Database className="text-purple-400" />}
-                            title="How We Use Your Information"
+                            title="How Your Data is Processed & Streamed"
                         >
                             <p className="text-zinc-400 leading-relaxed mb-4">
-                                We use the collected information to:
+                                We utilize client-side execution to process data with minimal server intervention:
                             </p>
                             <ul className="space-y-3 text-zinc-400">
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
-                                    <span>Provide and maintain the ScholarSync service</span>
+                                    <span><strong>Client-Side Vision AI Extraction:</strong> PDF rasterization and diagram transcription occur directly in your browser. Raw extraction data is sent straight from the client to your chosen AI provider.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
-                                    <span>Sync your Google Classroom assignments and materials</span>
+                                    <span><strong>Zero-Buffer Streaming Proxy:</strong> When opening Large Google Drive or Supabase PDF attachments, files are piped through a memory-safe stream proxy to prevent server buffering and memory leaks. No permanent file copies are saved on the server.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
-                                    <span>Generate AI-powered explanations, quizzes, and solutions</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
-                                    <span>Save generated content to your Google Drive</span>
+                                    <span><strong>Google Docs Integration:</strong> Syncs your written drafts back and forth to Google Docs. Converts terminal command snippets to structured tables dynamically for accurate Docs layouts.</span>
                                 </li>
                             </ul>
                         </PolicySection>
 
                         <PolicySection
                             icon={<Lock className="text-green-400" />}
-                            title="Data Security"
+                            title="Security & Data Teardown"
                         >
+                            <p className="text-zinc-400 leading-relaxed mb-3">
+                                We believe you should have complete control over your data.
+                            </p>
                             <p className="text-zinc-400 leading-relaxed">
-                                We implement industry-standard security measures to protect your personal information. Your Google OAuth tokens are securely stored and encrypted. We do not sell, trade, or otherwise transfer your personally identifiable information to outside parties. Your Groq API key, if provided, is stored only in your browser's local storage and is never sent to our servers.
+                                Google OAuth tokens are securely stored and encrypted. If you choose to **disconnect Google Classroom/Drive**, our server revokes the access refresh token directly with Google and runs a **complete data-teardown**—wiping your course list, assignments, synced files, and generated solutions permanently from MongoDB.
                             </p>
                         </PolicySection>
 
                         <PolicySection
                             icon={<RefreshCw className="text-orange-400" />}
-                            title="Third-Party Services"
+                            title="Third-Party Integrations"
                         >
                             <p className="text-zinc-400 leading-relaxed mb-4">
-                                ScholarSync integrates with the following third-party services:
+                                To facilitate assignment syncing and AI tools, the service coordinates with:
                             </p>
                             <ul className="space-y-3 text-zinc-400">
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google OAuth:</strong> For secure authentication</span>
+                                    <span><strong className="text-zinc-300">Google APIs (OAuth2, Classroom, Drive, Docs):</strong> For coursework syncing, authorization, document writing, and exports.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google Classroom API:</strong> To fetch your assignments and course materials</span>
+                                    <span><strong className="text-zinc-300">Supabase Storage:</strong> For hosting files uploaded for custom assignments.</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Google Drive API:</strong> To save generated solutions to your Drive</span>
-                                </li>
-                                <li className="flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 flex-shrink-0" />
-                                    <span><strong className="text-zinc-300">Groq API:</strong> To power AI features (using your own API key)</span>
+                                    <span><strong className="text-zinc-300">LLM Provider Endpoints:</strong> Direct client-side calls to Groq, OpenAI, Google Gemini, Anthropic Claude, OpenRouter, or your local Ollama server (`http://localhost:11434`).</span>
                                 </li>
                             </ul>
                         </PolicySection>
@@ -141,7 +140,7 @@ const PrivacyPolicy = () => {
                             title="Contact Us"
                         >
                             <p className="text-zinc-400 leading-relaxed">
-                                If you have any questions about this Privacy Policy, please contact us at{" "}
+                                If you have questions about this Privacy Policy, your encrypted vault, or wish to audit how your keys are processed, please contact us at{" "}
                                 <a href="mailto:support@scholarsync.app" className="text-indigo-400 hover:text-indigo-300 transition-colors">
                                     support@scholarsync.app
                                 </a>

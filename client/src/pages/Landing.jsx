@@ -48,15 +48,15 @@ const Landing = () => {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 sm:h-2 w-1.5 sm:w-2 bg-indigo-500"></span>
                         </span>
-                        Powered by LLaMA 3.3 70B via Groq
+                        Google Classroom × Google Drive × Custom Uploads × BYOK
                     </div>
 
                     <h1 id="hero-heading" className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400 leading-tight">
-                        AI Classroom Manager - Master your coursework with <span className="text-indigo-400">AI Superpowers</span>
+                        AI-Powered Assignment Learning in <span className="text-indigo-400">One Calm Workspace</span>
                     </h1>
 
                     <p className="text-sm sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed px-2">
-                        ScholarSync is your intelligent AI classroom manager that seamlessly syncs with Google Classroom. Get AI-powered explanations, generate smart quizzes and flashcards, and draft assignment solutions in seconds.
+                        ScholarSync integrates your coursework, reads PDFs & diagrams using vision AI, and guides you with an interactive Socratic tutor. <strong>Classroom connection is completely optional</strong>—study classroom materials or upload your own files to work entirely independently.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
@@ -74,45 +74,50 @@ const Landing = () => {
             <section className="py-12 sm:py-24 bg-zinc-900/30 border-y border-white/5" aria-labelledby="features-heading">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6">
                     <div className="text-center mb-8 sm:mb-16">
-                        <h2 id="features-heading" className="text-xl sm:text-3xl font-bold mb-2 sm:mb-4">AI Classroom Manager Features</h2>
-                        <p className="text-sm sm:text-base text-zinc-400">Powerful AI tools designed for the modern student to ace their assignments.</p>
+                        <h2 id="features-heading" className="text-xl sm:text-3xl font-bold mb-2 sm:mb-4">AI Classroom & Learning Features</h2>
+                        <p className="text-sm sm:text-base text-zinc-400">Advanced AI capabilities designed to help you understand your coursework, not just complete it.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
                         <FeatureCard
                             icon={<BookOpen className="text-blue-400" />}
-                            title="Google Classroom Sync"
-                            desc="Automatically fetch all your assignments, materials, and due dates from Google Classroom with one click."
+                            title="Optional Classroom Sync"
+                            desc="Sync courses, coursework, and submission status with Google Classroom. Disconnect at any time to wipe synced data."
+                        />
+                        <FeatureCard
+                            icon={<Layers className="text-pink-400" />}
+                            title="Direct Custom Uploads"
+                            desc="Upload local PDF assignments directly to manual folders stored securely in Supabase storage for independent study."
                         />
                         <FeatureCard
                             icon={<BrainCircuit className="text-purple-400" />}
-                            title="AI Explanations"
-                            desc="Get instant, easy-to-understand AI explanations for complex topics directly from your course materials."
+                            title="Vision AI Document Extraction"
+                            desc="Rasterizes PDFs page-by-page. Reads both text and diagrams (circuits, graphs, figures) using advanced vision-capable LLMs."
+                        />
+                        <FeatureCard
+                            icon={<MessageSquare className="text-emerald-400" />}
+                            title="Interactive Socratic Tutor"
+                            desc="Learn step-by-step. Get conceptual hints, worked analogies, and draft verification in a rich TipTap editor workspace."
                         />
                         <FeatureCard
                             icon={<Zap className="text-yellow-400" />}
                             title="Smart Quiz Generator"
-                            desc="Turn any assignment into a practice quiz to test your knowledge before the exam with AI-generated questions."
+                            desc="Customize question count, difficulty, and type. Test your knowledge with a structured, scored interactive quiz interface."
                         />
                         <FeatureCard
                             icon={<Layers className="text-pink-400" />}
                             title="AI Flashcard Generator"
-                            desc="Automatically generate flashcards from your study materials to master concepts quickly and efficiently."
-                        />
-                        <FeatureCard
-                            icon={<MessageSquare className="text-green-400" />}
-                            title="Chat with Documents"
-                            desc="Have an interactive AI conversation with your assignment documents and PDFs to clarify doubts instantly."
+                            desc="Instantly generate 10-15 front/back conceptual flipcards with an interactive flip-card review interface."
                         />
                         <FeatureCard
                             icon={<PenTool className="text-orange-400" />}
-                            title="AI Solution Drafts"
-                            desc="Get a head start with AI-drafted assignment solutions that you can edit and refine before submitting."
+                            title="Google Docs Sync & Submission"
+                            desc="Sync solutions back-and-forth with real Google Docs. Compiles solutions directly to organized Course/Assignment folders."
                         />
                         <FeatureCard
                             icon={<FolderTree className="text-cyan-400" />}
-                            title="Google Drive Integration"
-                            desc="Keeps your Google Drive organized by automatically saving solutions to 'ScholarSync/Course/Assignment' folders."
+                            title="API Usage & Cost Analytics"
+                            desc="Real-time usage dashboard tracking token count, estimated costs, and rate limiter status right in your browser."
                         />
                     </div>
                 </div>
@@ -128,14 +133,17 @@ const Landing = () => {
                             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400 mb-2 sm:mb-4" aria-hidden="true">
                                 <ShieldCheck size={20} className="sm:w-6 sm:h-6" />
                             </div>
-                            <h2 id="byok-heading" className="text-xl sm:text-3xl font-bold">Bring Your Own API Key - Privacy First</h2>
+                            <h2 id="byok-heading" className="text-xl sm:text-3xl font-bold">Bring Your Own Key — Client-Side Encryption</h2>
                             <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-                                We believe in privacy and control for our AI classroom manager. Bring your own Groq API key to unlock unlimited AI generations. Your key is stored locally on your device and sent per-request - never stored on our servers.
+                                ScholarSync uses a **Bring-Your-Own-Key (BYOK)** model. Provide your own API key for **Groq, OpenAI, Google Gemini, Anthropic, OpenRouter**, or connect a **local Ollama instance** key-free. 
+                            </p>
+                            <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
+                                Keys are **AES-256-GCM encrypted in the browser** using PBKDF2 derived from a student-chosen PIN. Plainsource credentials only live in session memory and fly directly to model endpoints—**never saved or visible to ScholarSync servers.**
                             </p>
                             <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-zinc-300">
-                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" /> Secure Local Storage - 100% Private</li>
-                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" /> No Usage Limits from ScholarSync</li>
-                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" /> Access to Latest AI Models</li>
+                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400" aria-hidden="true" /> AES-256-GCM + PBKDF2 Web Crypto Key Vault</li>
+                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400" aria-hidden="true" /> Direct client-side inference to save costs & preserve privacy</li>
+                                <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400" aria-hidden="true" /> Full support for 6 providers and custom model endpoints</li>
                             </ul>
                         </div>
                     </div>
@@ -146,22 +154,16 @@ const Landing = () => {
             <section className="py-12 sm:py-20 px-4 sm:px-6 bg-zinc-900/20" aria-labelledby="seo-heading">
                 <div className="max-w-4xl mx-auto text-center space-y-6">
                     <h2 id="seo-heading" className="text-xl sm:text-2xl font-bold text-zinc-300">
-                        The Best AI Classroom Manager for Students
+                        The Ultimate AI Assignment Study Workspace
                     </h2>
                     <div className="text-sm text-zinc-500 space-y-4 text-left max-w-3xl mx-auto">
                         <p>
-                            <strong className="text-zinc-400">ScholarSync</strong> is the ultimate AI classroom manager designed specifically for students using Google Classroom. 
-                            Our intelligent assignment helper uses advanced AI to help you understand complex topics, generate practice quizzes and flashcards, 
-                            and draft solutions for your assignments.
+                            <strong className="text-zinc-400">ScholarSync</strong> is a premium AI study manager and assignment assistant that integrates Google Classroom, Google Drive, custom local file uploads, and your own LLM keys. 
+                            With advanced client-side execution, you get vision-powered document parsing, quiz generators, flashcard compilers, and a Socratic teaching assistant in a secure, unified workspace.
                         </p>
                         <p>
-                            Whether you're looking for an <strong className="text-zinc-400">AI assignment helper</strong>, a <strong className="text-zinc-400">smart classroom manager</strong>, 
-                            or a tool to <strong className="text-zinc-400">chat with your PDFs</strong>, ScholarSync has you covered. Our seamless Google Classroom integration 
-                            means all your courses, assignments, and materials are automatically synced and organized.
-                        </p>
-                        <p>
-                            Key features include: AI-powered explanations, smart quiz generator, flashcard creator, document chat, 
-                            solution drafting, and automatic Google Drive organization. Start using the best <strong className="text-zinc-400">AI classroom manager</strong> today!
+                            Designed for privacy-minded students, the app supports complete classroom data-teardown, client-side AES key encryption, memory-safe file streams, and interactive document editing. 
+                            Use local offline LLMs with Ollama or major providers like Groq, Anthropic, Gemini, OpenAI, and OpenRouter.
                         </p>
                     </div>
                 </div>
@@ -173,12 +175,14 @@ const Landing = () => {
 };
 
 const FeatureCard = ({ icon, title, desc }) => (
-    <article className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-zinc-900/50 border border-white/5 hover:border-indigo-500/30 transition-all hover:-translate-y-1 group">
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-zinc-800 flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-zinc-700 transition-colors" aria-hidden="true">
-            {icon}
+    <article className="p-4 sm:p-6 rounded-xl sm:rounded-2xl bg-zinc-900/50 border border-white/5 hover:border-indigo-500/30 transition-all hover:-translate-y-1 group flex flex-col justify-between">
+        <div>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-zinc-800 flex items-center justify-center mb-3 sm:mb-4 group-hover:bg-zinc-700 transition-colors" aria-hidden="true">
+                {icon}
+            </div>
+            <h3 className="text-base sm:text-lg font-bold mb-1 sm:mb-2 text-white">{title}</h3>
+            <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">{desc}</p>
         </div>
-        <h3 className="text-base sm:text-xl font-bold mb-1 sm:mb-2">{title}</h3>
-        <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed">{desc}</p>
     </article>
 );
 

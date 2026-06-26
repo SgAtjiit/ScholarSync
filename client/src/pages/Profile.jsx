@@ -880,7 +880,7 @@ const Profile = () => {
                     <CheckCircle2 className="text-emerald-400 shrink-0" size={20} />
                     <div>
                       <p className="text-sm font-semibold text-emerald-200">Integration Connected</p>
-                      <p className="text-xs text-zinc-400">Classroom courses, coursework, and Drive scopes are linked to this session.</p>
+                      <p className="text-xs text-zinc-400">Classroom courses, coursework, and Drive scopes are linked. Disconnecting will revoke Google tokens and completely delete synced data from the database.</p>
                     </div>
                   </div>
                   <Button 
@@ -943,7 +943,7 @@ const Profile = () => {
                 <div className="space-y-3">
                   <div className="flex gap-4 p-3 rounded-xl bg-white/5 border border-white/5 group-hover:bg-white/10 transition-colors">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#09090b] border border-white/10 text-zinc-400 flex items-center justify-center font-bold text-xs shadow-inner">1</span>
-                    <p className="text-sm text-zinc-300 leading-relaxed mt-0.5">Go to your <strong>Dashboard</strong> to view linked courses.</p>
+                    <p className="text-sm text-zinc-300 leading-relaxed mt-0.5">Go to your <strong>Dashboard</strong> to view linked courses or create manual assignments.</p>
                   </div>
                   <div className="flex gap-4 p-3 rounded-xl bg-white/5 border border-white/5 group-hover:bg-white/10 transition-colors">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#09090b] border border-white/10 text-zinc-400 flex items-center justify-center font-bold text-xs shadow-inner">2</span>
@@ -963,26 +963,26 @@ const Profile = () => {
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">💬</div>
-                      <span className="text-sm font-semibold text-zinc-200">Chat Tab</span>
+                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">✨</div>
+                      <span className="text-sm font-semibold text-zinc-200">AI Response Tab</span>
                     </div>
-                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Q&A</span>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Explain / Quiz / Tutor</span>
                   </div>
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">📄</div>
-                      <span className="text-sm font-semibold text-zinc-200">Doc Tab</span>
+                      <span className="text-sm font-semibold text-zinc-200">Assignment Tab</span>
                     </div>
-                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Source Files</span>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">PDF Viewer</span>
                   </div>
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 shadow-inner hover:border-cyan-500/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">✨</div>
-                      <span className="text-sm font-semibold text-zinc-200">AI Toolkit</span>
+                      <div className="text-lg bg-white/5 p-2 rounded-lg border border-white/5">🛠️</div>
+                      <span className="text-sm font-semibold text-zinc-200">AI Toolkit (Sidebar)</span>
                     </div>
-                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Generator</span>
+                    <span className="text-xs font-medium text-zinc-500 bg-white/5 px-2.5 py-1 rounded-md">Extract / Mode Select</span>
                   </div>
                 </div>
               </div>
